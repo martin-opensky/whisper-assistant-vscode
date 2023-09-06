@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/whisper-assistant.png" alt="Whisper Assistant">
+  <img src="https://raw.githubusercontent.com/martin-opensky/whisper-assistant-vscode/main/images/whisper-assistant.png" alt="Whisper Assistant">
 </p>
 
 # Whisper Assistant: Your Voice-Driven Coding Companion
@@ -46,23 +46,23 @@ To install and setup Whisper Assistant, follow these steps:
 
 1. **Initialization**: Upon loading Visual Studio Code, the extension verifies the correct installation of SoX and Whisper. If any issues are detected, an error message will be displayed. These dependencies must be installed to use the extension.
 
-  <img src="images/errors.png" alt="Quote icon" style="width: 360px; height: auto; ">
+  <img src="https://raw.githubusercontent.com/martin-opensky/whisper-assistant-vscode/main/images/errors.png" alt="Quote icon" style="width: 360px; height: auto; ">
 
 Once initialization is complete, a quote icon will appear in the bottom right status bar.
 
-  <img src="images/quote.png" alt="Quote icon" style="width: 144px; height: auto; ">
+  <img src="https://raw.githubusercontent.com/martin-opensky/whisper-assistant-vscode/main/images/quote.png" alt="Quote icon" style="width: 144px; height: auto; ">
 
 2. **Starting the Recording**: Activate the extension by clicking on the quote icon or using the shortcut `Command+M` (for Mac) or `Control+M` (for Windows). You can record for as long as you like, but remember, the longer the recording, the longer the transcription process. The recording time will be displayed in the status bar.
 
-  <img src="images/recording.png" alt="Recording icon" style="width: 100px; height: auto;">
+  <img src="https://raw.githubusercontent.com/martin-opensky/whisper-assistant-vscode/main/images/recording.png" alt="Recording icon" style="width: 100px; height: auto;">
 
 3. **Stopping the Recording**: Stop the recording using the same shortcut (`Command+M` or `Control+M`). The extension icon in the status bar will change to a loading icon, and a progress message will be displayed, indicating that the transcription is underway.
 
-  <img src="images/transcribing.png" alt="Transcribing" style="width: 360px; height: auto; ">
+  <img src="https://raw.githubusercontent.com/martin-opensky/whisper-assistant-vscode/main/images/transcribing.png" alt="Transcribing" style="width: 360px; height: auto; ">
 
 4. **Transcription**: Once the transcription is complete, the text will be saved to the clipboard. This allows you to use the transcription in any program, not just within Visual Studio Code. If an editor is active, the transcription will be pasted there automatically.
 
-  <img src="images/transcribed.png" alt="Transcribed" style="width: 400px; height: auto; ">
+  <img src="https://raw.githubusercontent.com/martin-opensky/whisper-assistant-vscode/main/images/transcribed.png" alt="Transcribed" style="width: 400px; height: auto; ">
 
 **Tip**: A good microphone will improve transcription accuracy, although it is not a requirement.
 
