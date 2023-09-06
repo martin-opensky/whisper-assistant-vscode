@@ -1,0 +1,59 @@
+{
+  "name": "whisper-assistant",
+  "displayName": "Whisper Assistant",
+  "description": "Leveraging OpenAI's Whisper to transcribe your speech, enhancing your coding efficiency and experience.",
+  "version": "0.0.5",
+  "publisher": "Martin Creedy",
+  "icon": "images/whisper-assistant.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/martin-opensky/whisper-vscode-extension.git"
+  },
+  "engines": {
+    "vscode": "^1.80.1"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onDidChangeWorkspaceFolders"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "whisperAssistant.toggleRecording",
+        "title": "Toggle Recording"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "whisperAssistant.toggleRecording",
+        "key": "ctrl+m",
+        "mac": "cmd+m"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "yarn run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "yarn run compile && yarn run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.80.1",
+    "@typescript-eslint/eslint-plugin": "^6.4.1",
+    "@typescript-eslint/parser": "^6.4.1",
+    "@vscode/test-electron": "^2.3.4",
+    "eslint": "^8.47.0",
+    "glob": "^10.3.3",
+    "mocha": "^10.2.0",
+    "typescript": "^5.1.6"
+  }
+}
