@@ -9,6 +9,7 @@ import {
   state,
 } from '../../extension';
 
+// NOTE: Tests can only be run if a workspace is open, so we need to open a known workspace before running the tests
 const outputWorkspace = '/Users/martin/Documents/www';
 
 suite('Extension Test Suite', () => {
@@ -52,6 +53,12 @@ suite('Extension Test Suite', () => {
     await toggleRecordingCommand();
     assert.strictEqual(state.isRecording, false);
   });
+
+  // TODO: Add a test that verifies that during transcribing the status bar item is updated correctly
+
+  // TODO: Add a test that verifies that the transcribing process is started correctly and the toggleRecordingCommand is disabled
+
+  // TODO: Add a test to make sure the transcription text is copied to the clipboard
 
   test('Check if extension is deactivated correctly', () => {
     deactivate();

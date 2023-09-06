@@ -1,6 +1,5 @@
 import { exec, ChildProcess } from 'child_process';
 import * as fs from 'fs';
-import * as vscode from 'vscode';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
@@ -15,7 +14,7 @@ interface Segment {
   temperature: number;
 }
 
-interface Transcription {
+export interface Transcription {
   text: string;
   segments: Segment[];
   language: string;
@@ -71,19 +70,19 @@ class SpeechTranscription {
     this.recordingProcess = null;
   }
 
-  async transcribeRecording(): Promise<void> {
+  async transcribeRecording(): Promise<Transcription | undefined> {
     try {
       const { stdout, stderr } = await execAsync(
         `whisper ${this.outputDir}/${this.fileName}.wav --model base --output_format json --task transcribe --language English --fp16 False --output_dir ${this.outputDir}`,
       );
-      await this.handleTranscription();
       console.log(`Transcription: ${stdout}`);
+      return await this.handleTranscription();
     } catch (error) {
       console.error(`error: ${error}`);
     }
   }
 
-  private async handleTranscription(): Promise<void> {
+  private async handleTranscription(): Promise<Transcription | undefined> {
     try {
       const data = await fs.promises.readFile(
         `${this.outputDir}/${this.fileName}.json`,
@@ -95,9 +94,8 @@ class SpeechTranscription {
       }
       const transcription: Transcription = JSON.parse(data);
       console.log(`${transcription.text}`);
-      vscode.env.clipboard.writeText(transcription.text).then(() => {
-        vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-      });
+
+      return transcription;
     } catch (err) {
       console.error(`Error reading file from disk: ${err}`);
     }

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import SpeechTranscription from './speech-transcription';
+import SpeechTranscription, { Transcription } from './speech-transcription';
 import * as fs from 'fs';
 
 interface ExtensionState {
@@ -107,13 +107,15 @@ export async function toggleRecordingCommand(): Promise<void> {
   if (
     state.workspacePath !== undefined &&
     state.outputDir !== undefined &&
-    state.speechTranscription !== undefined
+    state.speechTranscription !== undefined &&
+    !state.isTranscribing
   ) {
     if (!state.isRecording) {
       state.speechTranscription.startRecording();
       state.recordingStartTime = Date.now();
       state.isRecording = true;
       updateStatusBarItem();
+
       setInterval(updateStatusBarItem, 1000);
     } else {
       state.speechTranscription.stopRecording();
@@ -132,7 +134,16 @@ export async function toggleRecordingCommand(): Promise<void> {
         const interval = startProgressInterval(progress, incrementData);
 
         if (state.speechTranscription !== undefined) {
-          await state.speechTranscription.transcribeRecording();
+          const transcription: Transcription | undefined =
+            await state.speechTranscription.transcribeRecording();
+
+          if (transcription) {
+            vscode.env.clipboard.writeText(transcription.text).then(() => {
+              vscode.commands.executeCommand(
+                'editor.action.clipboardPasteAction',
+              );
+            });
+          }
         }
 
         await finalizeProgress(progress, interval, incrementData);
@@ -143,10 +154,6 @@ export async function toggleRecordingCommand(): Promise<void> {
         state.speechTranscription.deleteFiles();
       }
     }
-  } else {
-    vscode.window.showErrorMessage(
-      'No workspace directory found. Please open a workspace directory before starting recording.',
-    );
   }
 }
 
@@ -189,13 +196,16 @@ function startProgressInterval(
   progress: vscode.Progress<{ increment: number; message: string }>,
   incrementData: { increment: number; incrementInterval: number },
 ): NodeJS.Timeout {
-  return setInterval(() => {
+  const interval = setInterval(() => {
     incrementData.increment += 1; // increment by 1% to slow down the progress
+
     progress.report({
       increment: incrementData.increment,
       message: 'Transcribing...',
     });
   }, incrementData.incrementInterval);
+
+  return interval;
 }
 
 async function finalizeProgress(
