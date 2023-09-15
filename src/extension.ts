@@ -87,11 +87,6 @@ export function initializeWorkspace(): void {
       fs.mkdirSync(whisperDir);
     }
     state.outputDir = `${state.workspacePath}/.whisper`;
-  } else {
-    vscode.window.showWarningMessage(
-      'No workspace directory found. Please open a workspace directory before starting recording.',
-    );
-    return;
   }
 }
 

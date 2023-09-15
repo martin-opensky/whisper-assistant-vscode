@@ -4,9 +4,9 @@
 
 # Whisper Assistant: Your Voice-Driven Coding Companion
 
-Whisper Assistant is an extension for Visual Studio Code that transcribes your spoken words into text within the VSCode editor. This hands-free approach to coding allows you to focus on your ideas, not your typing.
+Whisper Assistant is an extension for Visual Studio Code that transcribes your spoken words into text within the VSCode editor. This hands-free approach to coding allows you to focus on your ideas instead of your typing.
 
-Designed to enhance your development experience, Whisper Assistant lets you use your voice to write code. It can also be integrated with other powerful AI tools, such as Chat GPT-4 or the [Cursor.so application](https://www.cursor.so/), to create a dynamic, AI-driven development environment.
+Whisper Assistant can also be integrated with other powerful AI tools, such as Chat GPT-4 or the [Cursor.so application](https://www.cursor.so/), to create a dynamic, AI-driven development environment.
 
 # Powered by OpenAI Whisper
 
@@ -68,18 +68,19 @@ Once initialization is complete, a quote icon will appear in the bottom right st
 
 **Tip**: For an optimal experience, consider using the Cursor.so application to directly call the Chat GPT-4 API for code instructions. This allows you to use your voice to instruct GPT to refactor your code, write unit tests, and implement various improvements.
 
-## Enhance Your Experience with Cursor.so
+## Using Whisper Assistant with Cursor.so
 
-Maximize the power of Whisper Assistant with Cursor.so by following these steps:
+To enhance your development experience with Cursor.so and Whisper Assistant, follow these simple steps:
 
-1.  Press `Command+M` or `Control+M` first, to begin recording.
-2.  Then press `Command+K` or `Command+L` to open the desired Cursor feature.
-3.  Begin speaking to provide your instructions.
-4.  Once finished, click the stop button in the taskbar to stop the recording.
-    - _This is because, the shortcut keys do not work within the context of the Cursor.so dialogs._
-5.  The transcription will be pasted into the Cursor dialog, and you can make any changes to the text or add files / docs then press `Enter` to query GPT.
+1.  Start the recording: Press `Command+M` (Mac) or `Control+M` (Windows).
+2.  Speak your instructions clearly.
+3.  Stop the recording: Press `Command+M` (Mac) or `Control+M` (Windows).
+    _Note: This initiates the transcription process._
+4.  Open the Cursor dialog: Press `Command+K` or `Command+L`.
+    _Important: Do this **before** the transcription completes._
+5.  The transcribed text will automatically populate the Cursor dialog. Here, you can edit the text or add files/docs, then press `Enter` to execute the GPT query.
 
-The combination of Cursor.so and Whisper Assistant provides an **exceptional development experience**, enabling you to give lengthy instructions that would otherwise require significant time and energy to type out.
+By integrating Cursor.so with Whisper Assistant, you can provide extensive instructions without the need for typing, significantly enhancing your development workflow.
 
 # Disclaimer
 
