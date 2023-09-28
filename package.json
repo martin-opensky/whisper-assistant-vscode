@@ -3,7 +3,7 @@
   "displayName": "Whisper Assistant",
   "description": "Leveraging OpenAI's Whisper to transcribe your speech, enhancing your coding efficiency and experience.",
   "version": "0.0.7",
-  "publisher": "Martin Creedy",
+  "publisher": "MartinOpenSky",
   "icon": "images/whisper-assistant.png",
   "repository": {
     "type": "git",
