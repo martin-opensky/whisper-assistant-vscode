@@ -20,6 +20,8 @@ export interface Transcription {
   language: string;
 }
 
+export type WhisperModel = 'tiny' | 'base' | 'small' | 'medium' | 'large';
+
 class SpeechTranscription {
   private fileName: string = 'recording';
   private recordingProcess: ChildProcess | null = null;
@@ -70,10 +72,13 @@ class SpeechTranscription {
     this.recordingProcess = null;
   }
 
-  async transcribeRecording(): Promise<Transcription | undefined> {
+  async transcribeRecording(
+    model: WhisperModel,
+  ): Promise<Transcription | undefined> {
     try {
+      console.log('Transcribing recording', model);
       const { stdout, stderr } = await execAsync(
-        `whisper ${this.outputDir}/${this.fileName}.wav --model base --output_format json --task transcribe --language English --fp16 False --output_dir ${this.outputDir}`,
+        `whisper ${this.outputDir}/${this.fileName}.wav --model ${model} --output_format json --task transcribe --language English --fp16 False --output_dir ${this.outputDir}`,
       );
       console.log(`Transcription: ${stdout}`);
       return await this.handleTranscription();

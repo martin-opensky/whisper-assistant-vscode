@@ -1,5 +1,8 @@
 import * as vscode from 'vscode';
-import SpeechTranscription, { Transcription } from './speech-transcription';
+import SpeechTranscription, {
+  Transcription,
+  WhisperModel,
+} from './speech-transcription';
 import * as fs from 'fs';
 
 interface ExtensionState {
@@ -129,8 +132,9 @@ export async function toggleRecordingCommand(): Promise<void> {
         const interval = startProgressInterval(progress, incrementData);
 
         if (state.speechTranscription !== undefined) {
+          const model: WhisperModel = getWhisperModel();
           const transcription: Transcription | undefined =
-            await state.speechTranscription.transcribeRecording();
+            await state.speechTranscription.transcribeRecording(model);
 
           if (transcription) {
             vscode.env.clipboard.writeText(transcription.text).then(() => {
@@ -237,4 +241,14 @@ export function deactivate() {
 
   // Log the deactivation
   console.log('Your extension "Whisper Assistant" is now deactivated');
+}
+
+function getWhisperModel(): WhisperModel {
+  const config = vscode.workspace.getConfiguration('whisperAssistant');
+  const whisperModel = config.get('whisperModel');
+  if (!whisperModel) {
+    return 'base';
+  }
+
+  return whisperModel as WhisperModel;
 }
