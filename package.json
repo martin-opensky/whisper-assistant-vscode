@@ -38,7 +38,7 @@
       "type": "object",
       "title": "Whisper Assistant Settings",
       "properties": {
-        "whisperAssistant.model": {
+        "whisper-assistant.model": {
           "type": "string",
           "default": "base",
           "enum": [

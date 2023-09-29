@@ -247,13 +247,16 @@ export function deactivate() {
 }
 
 function getWhisperModel(): WhisperModel {
-  const config = vscode.workspace.getConfiguration('whisperAssistant');
-  const whisperModel = config.get('whisperModel');
+  const config = vscode.workspace.getConfiguration('whisper-assistant');
+  const whisperModel = config.get('model') as WhisperModel;
   if (!whisperModel) {
+    state.outputChannel?.appendLine(
+      'Whisper Assistant: No whisper model found in configuration',
+    );
     return 'base';
   }
 
-  return whisperModel as WhisperModel;
+  return whisperModel;
 }
 
 export function initializeOutputChannel(): void {

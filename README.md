@@ -10,12 +10,11 @@ Whisper Assistant can also be integrated with other powerful AI tools, such as C
 
 # Powered by OpenAI Whisper
 
-Whisper Assistant leverages a local installation of the Whisper AI, providing a cost-free voice transcription service.
+Whisper Assistant utilizes the Whisper AI locally, offering a free voice transcription service.
 
-The extension uses the base model of Whisper, striking a balance between accuracy and performance. While the model cannot be changed at this stage, future updates will allow customization to suit your specific needs. Please note that the first time you run Whisper, it will need to download the model it's using. I recommend downloading the 'base' model on the command line before using the extension.
+By default, the base model of Whisper AI is used, balancing accuracy and performance. You can select a different model in the extension settings, but remember to download your chosen model before using Whisper Assistant. **Failure to download the selected model can lead to errors.** The base model is recommended and set as default.
 
-For more information about Whisper, visit the OpenAI Whisper GitHub Repository.
-[Whisper OpenAI GitHub page](https://github.com/openai/whisper)
+For more details about Whisper, visit the [Whisper OpenAI GitHub page](https://github.com/openai/whisper).
 
 ## Getting Started: Installation Instructions
 
