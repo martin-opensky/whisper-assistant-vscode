@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { exec, ChildProcess } from 'child_process';
 import * as fs from 'fs';
 import { promisify } from 'util';
@@ -26,7 +27,10 @@ class SpeechTranscription {
   private fileName: string = 'recording';
   private recordingProcess: ChildProcess | null = null;
 
-  constructor(private outputDir: string) {}
+  constructor(
+    private outputDir: string,
+    private outputChannel: vscode.OutputChannel,
+  ) {}
 
   async checkIfInstalled(command: string): Promise<boolean> {
     try {
@@ -47,27 +51,31 @@ class SpeechTranscription {
         `sox -d -b 16 -e signed -c 1 -r 16k ${this.outputDir}/${this.fileName}.wav`,
         (error, stdout, stderr) => {
           if (error) {
-            console.error(`error: ${error}`);
+            this.outputChannel.appendLine(`Whisper Assistant: error: ${error}`);
             return;
           }
           if (stderr) {
-            console.log(`SoX process has been killed: ${stderr}`);
+            this.outputChannel.appendLine(
+              `Whisper Assistant: SoX process has been killed: ${stderr}`,
+            );
             return;
           }
-          console.log(`stdout: ${stdout}`);
+          this.outputChannel.appendLine(`Whisper Assistant: stdout: ${stdout}`);
         },
       );
     } catch (error) {
-      console.error(`error: ${error}`);
+      this.outputChannel.appendLine(`Whisper Assistant: error: ${error}`);
     }
   }
 
   async stopRecording(): Promise<void> {
     if (!this.recordingProcess) {
-      console.error('No recording process found');
+      this.outputChannel.appendLine(
+        'Whisper Assistant: No recording process found',
+      );
       return;
     }
-    console.log('Stopping recording');
+    this.outputChannel.appendLine('Whisper Assistant: Stopping recording');
     this.recordingProcess.kill();
     this.recordingProcess = null;
   }
@@ -76,14 +84,18 @@ class SpeechTranscription {
     model: WhisperModel,
   ): Promise<Transcription | undefined> {
     try {
-      console.log('Transcribing recording', model);
+      this.outputChannel.appendLine(
+        `Whisper Assistant: Transcribing recording using '${model}' model`,
+      );
       const { stdout, stderr } = await execAsync(
         `whisper ${this.outputDir}/${this.fileName}.wav --model ${model} --output_format json --task transcribe --language English --fp16 False --output_dir ${this.outputDir}`,
       );
-      console.log(`Transcription: ${stdout}`);
+      this.outputChannel.appendLine(
+        `Whisper Assistant: Transcription: ${stdout}`,
+      );
       return await this.handleTranscription();
     } catch (error) {
-      console.error(`error: ${error}`);
+      this.outputChannel.appendLine(`Whisper Assistant: error: ${error}`);
     }
   }
 
@@ -94,15 +106,19 @@ class SpeechTranscription {
         'utf8',
       );
       if (!data) {
-        console.error('No transcription data found');
+        this.outputChannel.appendLine(
+          'Whisper Assistant: No transcription data found',
+        );
         return;
       }
       const transcription: Transcription = JSON.parse(data);
-      console.log(`${transcription.text}`);
+      this.outputChannel.appendLine(`Whisper Assistant: ${transcription.text}`);
 
       return transcription;
     } catch (err) {
-      console.error(`Error reading file from disk: ${err}`);
+      this.outputChannel.appendLine(
+        `Whisper Assistant: Error reading file from disk: ${err}`,
+      );
     }
   }
 

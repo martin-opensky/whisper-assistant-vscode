@@ -2,7 +2,7 @@
   "name": "whisper-assistant",
   "displayName": "Whisper Assistant",
   "description": "Leveraging OpenAI's Whisper to transcribe your speech, enhancing your coding efficiency and experience.",
-  "version": "0.0.8",
+  "version": "1.0.0",
   "publisher": "MartinOpenSky",
   "icon": "images/whisper-assistant.png",
   "repository": {
@@ -10,7 +10,7 @@
     "url": "https://github.com/martin-opensky/whisper-assistant-vscode.git"
   },
   "engines": {
-    "vscode": "^1.70"
+    "vscode": "^1.70.0"
   },
   "categories": [
     "Other"
@@ -41,7 +41,14 @@
         "whisperAssistant.model": {
           "type": "string",
           "default": "base",
-          "description": "Set the whisper model to use. (tiny, base, small, medium, large). Base is the default."
+          "enum": [
+            "tiny",
+            "base",
+            "small",
+            "medium",
+            "large"
+          ],
+          "description": "Set the whisper model to use. Base is the default."
         }
       }
     }
@@ -58,7 +65,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.1",
     "@types/node": "16.x",
-    "@types/vscode": "^1.80.1",
+    "@types/vscode": "^1.70.0",
     "@typescript-eslint/eslint-plugin": "^6.4.1",
     "@typescript-eslint/parser": "^6.4.1",
     "@vscode/test-electron": "^2.3.4",

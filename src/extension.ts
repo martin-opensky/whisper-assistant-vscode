@@ -13,6 +13,7 @@ interface ExtensionState {
   workspacePath: string | undefined;
   outputDir: string | undefined;
   recordingStartTime: number | undefined;
+  outputChannel?: vscode.OutputChannel;
 }
 
 export const state: ExtensionState = {
@@ -36,6 +37,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Initialize the Recording class
   state.speechTranscription = new SpeechTranscription(
     state.outputDir as string,
+    state.outputChannel as vscode.OutputChannel,
   );
 
   // Check if Sox and Whisper are installed
@@ -251,4 +253,8 @@ function getWhisperModel(): WhisperModel {
   }
 
   return whisperModel as WhisperModel;
+}
+
+export function initializeOutputChannel(): void {
+  state.outputChannel = vscode.window.createOutputChannel('Whisper Assistant');
 }
