@@ -35,6 +35,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   // Initialize the Recording class
+  initializeOutputChannel();
   state.speechTranscription = new SpeechTranscription(
     state.outputDir as string,
     state.outputChannel as vscode.OutputChannel,

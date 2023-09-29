@@ -7,6 +7,7 @@ import {
   toggleRecordingCommand,
   deactivate,
   state,
+  initializeOutputChannel,
 } from '../../extension';
 
 // NOTE: Tests can only be run if a workspace is open, so we need to open a known workspace before running the tests
@@ -15,6 +16,8 @@ const outputWorkspace = '/Users/martin/Documents/www';
 suite('Extension Test Suite', () => {
   vscode.window.showInformationMessage('Start all tests.');
 
+  initializeOutputChannel();
+
   suiteSetup(async () => {
     // Open a specific workspace directory before running the tests
     const uri = vscode.Uri.file(outputWorkspace);
@@ -22,13 +25,27 @@ suite('Extension Test Suite', () => {
   });
 
   test('Check if Sox is installed', async () => {
-    const speechTranscription = new SpeechTranscription(outputWorkspace);
+    if (state.outputChannel === undefined) {
+      throw new Error('Output channel is undefined');
+    }
+
+    const speechTranscription = new SpeechTranscription(
+      outputWorkspace,
+      state.outputChannel,
+    );
     const isSoxInstalled = await speechTranscription.checkIfInstalled('sox');
     assert.strictEqual(isSoxInstalled, true);
   });
 
   test('Check if Whisper is installed', async () => {
-    const speechTranscription = new SpeechTranscription(outputWorkspace);
+    if (state.outputChannel === undefined) {
+      throw new Error('Output channel is undefined');
+    }
+
+    const speechTranscription = new SpeechTranscription(
+      outputWorkspace,
+      state.outputChannel,
+    );
     const isWhisperInstalled = await speechTranscription.checkIfInstalled(
       'whisper',
     );
