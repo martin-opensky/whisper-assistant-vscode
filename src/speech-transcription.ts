@@ -80,15 +80,16 @@ class SpeechTranscription {
     this.recordingProcess = null;
   }
 
-  async transcribeRecording(
-    model: WhisperModel,
-  ): Promise<Transcription | undefined> {
+  public async transcribeRecording(model: WhisperModel, language: string): Promise<Transcription | undefined> {
     try {
+      const config = vscode.workspace.getConfiguration('whisperAssistant');
+      const language = config.get<string>('transcriptionLanguage', 'en');
+
       this.outputChannel.appendLine(
-        `Whisper Assistant: Transcribing recording using '${model}' model`,
+        `Whisper Assistant: Transcribing recording using '${model}' model and '${language}' language`,
       );
       const { stdout, stderr } = await execAsync(
-        `whisper ${this.outputDir}/${this.fileName}.wav --model ${model} --output_format json --task transcribe --language English --fp16 False --output_dir ${this.outputDir}`,
+        `whisper ${this.outputDir}/${this.fileName}.wav --model ${model} --output_format json --task transcribe --language ${language} --fp16 False --output_dir ${this.outputDir}`,
       );
       this.outputChannel.appendLine(
         `Whisper Assistant: Transcription: ${stdout}`,

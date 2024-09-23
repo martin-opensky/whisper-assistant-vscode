@@ -136,8 +136,9 @@ export async function toggleRecordingCommand(): Promise<void> {
 
         if (state.speechTranscription !== undefined) {
           const model: WhisperModel = getWhisperModel();
+          const language: string = getTranscriptionLanguage();
           const transcription: Transcription | undefined =
-            await state.speechTranscription.transcribeRecording(model);
+            await state.speechTranscription.transcribeRecording(model, language);
 
           if (transcription) {
             vscode.env.clipboard.writeText(transcription.text).then(() => {
@@ -257,6 +258,18 @@ function getWhisperModel(): WhisperModel {
   }
 
   return whisperModel;
+}
+
+function getTranscriptionLanguage(): string {
+  const config = vscode.workspace.getConfiguration('whisper-assistant');
+  const language = config.get('transcriptionLanguage') as string;
+  if (!language) {
+    state.outputChannel?.appendLine(
+      'Whisper Assistant: No transcription language found in configuration, using default (en)'
+    );
+    return 'en';
+  }
+  return language;
 }
 
 export function initializeOutputChannel(): void {
