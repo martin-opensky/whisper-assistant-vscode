@@ -49,6 +49,19 @@
             "large"
           ],
           "description": "Set the whisper model to use. Base is the default."
+        },
+        "whisperAssistant.transcriptionLanguage": {
+          "type": "string",
+          "default": "en",
+          "enum": [
+            "en",
+            "fr"
+          ],
+          "enumDescriptions": [
+            "English",
+            "French"
+          ],
+          "description": "The language to use for transcription"
         }
       }
     }
