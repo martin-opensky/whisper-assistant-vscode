@@ -1,198 +1,195 @@
 import * as vscode from 'vscode';
-import { exec, ChildProcess, spawn } from 'child_process';
 import * as fs from 'fs';
-import { promisify } from 'util';
-import * as os from 'os';
 import * as path from 'path';
+import { ChildProcess, spawn } from 'child_process';
 import WebSocket from 'ws';
-
-const execAsync = promisify(exec);
-
-interface Segment {
-  id: number;
-  seek: number;
-  start: number;
-  end: number;
-  text: string;
-  tokens: number[];
-  temperature: number;
-}
-
-export interface Transcription {
-  text: string;
-  segments: Segment[];
-  language: string;
-}
 
 export type WhisperModel = 'tiny' | 'base' | 'small' | 'medium' | 'large';
 
-class SpeechTranscription {
-  private fileName: string = 'recording';
+export default class SpeechTranscription {
+  private context: vscode.ExtensionContext;
+  private outputChannel: vscode.OutputChannel;
+  private statusBarItem: vscode.StatusBarItem;
   private recordingProcess: ChildProcess | null = null;
-  private socket: WebSocket | null = null;
-  private _isRecording: boolean = false;
-  private recordingStartTime: number | undefined;
+  private ws: WebSocket | null = null;
+  private tempDir: vscode.Uri;
+  private audioFilePath: string;
 
   constructor(
-    private outputChannel: vscode.OutputChannel,
-    private statusBarItem: vscode.StatusBarItem,
-  ) {}
+    context: vscode.ExtensionContext,
+    outputChannel: vscode.OutputChannel,
+    statusBarItem: vscode.StatusBarItem,
+  ) {
+    this.context = context;
+    this.outputChannel = outputChannel;
+    this.statusBarItem = statusBarItem;
+
+    this.tempDir = context.globalStorageUri;
+    if (!fs.existsSync(this.tempDir.fsPath)) {
+      fs.mkdirSync(this.tempDir.fsPath, { recursive: true });
+    }
+
+    this.audioFilePath = vscode.Uri.joinPath(
+      this.tempDir,
+      'recording.wav',
+    ).fsPath;
+    this.outputChannel.appendLine(
+      `Global storage path: ${this.tempDir.fsPath}`,
+    );
+    this.outputChannel.appendLine(
+      `Audio file will be saved as: ${this.audioFilePath}`,
+    );
+  }
 
   async checkIfInstalled(command: string): Promise<boolean> {
-    try {
-      await execAsync(`${command} --help`);
-      return true;
-    } catch (error) {
-      return false;
-    }
+    return new Promise((resolve) => {
+      const process = spawn(command, ['--version']);
+      process.on('error', () => resolve(false));
+      process.on('close', (code) => resolve(code === 0));
+    });
   }
 
-  get isRecording(): boolean {
-    return this._isRecording;
-  }
+  async startRecording(): Promise<void> {
+    this.outputChannel.appendLine(
+      `Starting recording to file: ${this.audioFilePath}`,
+    );
 
-  startRecording(): void {
-    if (this.isRecording) {
-      return;
+    // Remove any existing recording file
+    if (fs.existsSync(this.audioFilePath)) {
+      fs.unlinkSync(this.audioFilePath);
     }
-
-    this._isRecording = true;
-    this.recordingStartTime = Date.now();
-    this.updateStatusBarItem();
-
-    const tmpDir = os.tmpdir();
-    // const outputFile = path.join(tmpDir, `${this.fileName}.wav`);
-
-    this.socket = new WebSocket('ws://localhost:8765');
-
-    this.socket.onmessage = (event: WebSocket.MessageEvent) => {
-      const result = JSON.parse(event.data.toString());
-      if (result.text) {
-        vscode.window.activeTextEditor?.edit((editBuilder) => {
-          const position = vscode.window.activeTextEditor?.selection.active;
-          if (position) {
-            editBuilder.insert(position, result.text + ' ');
-          }
-        });
-      }
-    };
 
     // Start audio recording using SoX
     this.recordingProcess = spawn('sox', [
       '-d',
       '-t',
-      'raw',
+      'wav',
       '-r',
       '16000',
       '-b',
       '16',
       '-c',
       '1',
-      '-',
+      this.audioFilePath,
     ]);
-
-    this.recordingProcess.stdout?.on('data', (data) => {
-      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-        this.socket.send(data);
-      }
-    });
 
     this.recordingProcess.stderr?.on('data', (data) => {
       this.outputChannel.appendLine(`Whisper Assistant: SoX error: ${data}`);
     });
+
+    this.outputChannel.appendLine('Recording started...');
   }
 
   async stopRecording(): Promise<void> {
-    if (!this.isRecording || !this.recordingProcess) {
-      this.outputChannel.appendLine(
-        'Whisper Assistant: No recording process found',
-      );
-      return;
-    }
     this.outputChannel.appendLine('Whisper Assistant: Stopping recording');
-    this.recordingProcess.kill();
-    this.recordingProcess = null;
-    this._isRecording = false;
-    this.updateStatusBarItem();
-
-    if (this.socket) {
-      this.socket.close();
-      this.socket = null;
+    if (this.recordingProcess) {
+      this.recordingProcess.kill();
+      this.recordingProcess = null;
     }
+
+    // Wait a bit for the file to be fully written
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Check if the file exists and has content
+    if (fs.existsSync(this.audioFilePath)) {
+      const stats = fs.statSync(this.audioFilePath);
+      this.outputChannel.appendLine(
+        `Audio file created. Size: ${stats.size} bytes`,
+      );
+    } else {
+      this.outputChannel.appendLine('Audio file was not created');
+    }
+
+    this.outputChannel.appendLine('Recording stopped.');
   }
 
-  async transcribeRecording(
-    model: WhisperModel,
-  ): Promise<Transcription | undefined> {
-    try {
-      const tmpDir = os.tmpdir();
-      const inputFile = path.join(tmpDir, `${this.fileName}.wav`);
-      const outputFile = path.join(tmpDir, `${this.fileName}.json`);
-
+  async transcribeRecording(): Promise<string | undefined> {
+    return new Promise((resolve, reject) => {
       this.outputChannel.appendLine(
-        `Whisper Assistant: Transcribing recording using '${model}' model`,
+        `Attempting to transcribe file: ${this.audioFilePath}`,
       );
-      const { stdout, stderr } = await execAsync(
-        `whisper ${inputFile} --model ${model} --output_format json --task transcribe --language English --fp16 False --output_dir ${tmpDir}`,
-      );
-      this.outputChannel.appendLine(
-        `Whisper Assistant: Transcription: ${stdout}`,
-      );
-      return await this.handleTranscription(outputFile);
-    } catch (error) {
-      this.outputChannel.appendLine(`Whisper Assistant: error: ${error}`);
-    }
-  }
 
-  private async handleTranscription(
-    outputFile: string,
-  ): Promise<Transcription | undefined> {
-    try {
-      const data = await fs.promises.readFile(outputFile, 'utf8');
-      if (!data) {
+      if (!fs.existsSync(this.audioFilePath)) {
         this.outputChannel.appendLine(
-          'Whisper Assistant: No transcription data found',
+          `Audio file not found: ${this.audioFilePath}`,
         );
-        return;
+        return reject(new Error('Audio file not found'));
       }
-      const transcription: Transcription = JSON.parse(data);
-      this.outputChannel.appendLine(`Whisper Assistant: ${transcription.text}`);
 
-      return transcription;
-    } catch (err) {
-      this.outputChannel.appendLine(
-        `Whisper Assistant: Error reading file from disk: ${err}`,
-      );
-    }
+      const stats = fs.statSync(this.audioFilePath);
+      this.outputChannel.appendLine(`Audio file size: ${stats.size} bytes`);
+
+      this.ws = new WebSocket('ws://localhost:8765');
+
+      this.ws.on('open', () => {
+        this.outputChannel.appendLine('WebSocket connection opened');
+        const fileStream = fs.createReadStream(this.audioFilePath);
+
+        fileStream.on('data', (chunk) => {
+          this.ws?.send(chunk);
+          this.outputChannel.appendLine(
+            `Sent chunk of size ${chunk.length} bytes`,
+          );
+        });
+
+        fileStream.on('end', () => {
+          this.ws?.send('END');
+          this.outputChannel.appendLine('Finished sending audio data');
+
+          this.deleteFiles();
+        });
+
+        fileStream.on('error', (error) => {
+          this.outputChannel.appendLine(`Error reading audio file: ${error}`);
+          reject(error);
+        });
+      });
+
+      this.ws.on('message', (data) => {
+        this.outputChannel.appendLine(`Received transcription: ${data}`);
+        const transcription = data.toString();
+        vscode.window.showInformationMessage(transcription);
+        resolve(transcription);
+      });
+
+      this.ws.on('error', (error) => {
+        this.outputChannel.appendLine(`WebSocket error: ${error}`);
+        reject(error);
+      });
+
+      this.ws.on('close', (code, reason) => {
+        this.outputChannel.appendLine(
+          `WebSocket closed. Code: ${code}, Reason: ${reason}`,
+        );
+        if (this.ws?.readyState !== WebSocket.CLOSED) {
+          reject(
+            new Error(
+              'WebSocket connection closed before transcription was received',
+            ),
+          );
+        }
+      });
+
+      // Add a timeout to prevent hanging indefinitely
+      setTimeout(() => {
+        if (this.ws?.readyState === WebSocket.OPEN) {
+          this.ws.close();
+          reject(new Error('Transcription timed out'));
+        }
+      }, 30000); // 30 seconds timeout
+    });
   }
 
   deleteFiles(): void {
-    const tmpDir = os.tmpdir();
-    const wavFile = path.join(tmpDir, `${this.fileName}.wav`);
-    const jsonFile = path.join(tmpDir, `${this.fileName}.json`);
-
-    if (fs.existsSync(wavFile)) {
-      fs.unlinkSync(wavFile);
-    }
-    if (fs.existsSync(jsonFile)) {
-      fs.unlinkSync(jsonFile);
-    }
-  }
-
-  private updateStatusBarItem(): void {
-    if (this.isRecording && this.recordingStartTime !== undefined) {
-      const recordingDuration = Math.floor(
-        (Date.now() - this.recordingStartTime) / 1000,
+    try {
+      if (fs.existsSync(this.audioFilePath)) {
+        fs.unlinkSync(this.audioFilePath);
+        this.outputChannel.appendLine('Temporary audio file deleted.');
+      }
+    } catch (error) {
+      this.outputChannel.appendLine(
+        `Error deleting temporary audio file: ${error}`,
       );
-      const minutes = Math.floor(recordingDuration / 60);
-      const seconds = recordingDuration % 60;
-      this.statusBarItem.text = `$(stop) ${minutes}:${
-        seconds < 10 ? '0' + seconds : seconds
-      }`;
-    } else {
-      this.statusBarItem.text = `$(quote)`;
     }
   }
 }
-
-export default SpeechTranscription;
