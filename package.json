@@ -1,7 +1,7 @@
 {
   "name": "whisper-assistant",
   "displayName": "Whisper Assistant",
-  "description": "Leveraging OpenAI's Whisper to transcribe your speech, enhancing your coding efficiency and experience.",
+  "description": "Leveraging OpenAI's Whisper to transcribe your speech in real-time, enhancing your coding efficiency and experience.",
   "version": "1.0.0",
   "publisher": "MartinOpenSky",
   "icon": "images/whisper-assistant.png",
@@ -63,10 +63,15 @@
     "package": "vsce package",
     "publish": "vsce publish"
   },
+  "dependencies": {
+    "node-audiorecorder": "^3.0.0",
+    "ws": "^8.5.5"
+  },
   "devDependencies": {
     "@types/mocha": "^10.0.1",
     "@types/node": "16.x",
     "@types/vscode": "^1.70.0",
+    "@types/ws": "^8.5.5",
     "@typescript-eslint/eslint-plugin": "^6.4.1",
     "@typescript-eslint/parser": "^6.4.1",
     "@vscode/test-electron": "^2.3.4",
