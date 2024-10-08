@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import * as path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { ChildProcess, spawn } from 'child_process';
 import WebSocket from 'ws';
 
@@ -13,7 +13,7 @@ export default class SpeechTranscription {
   private recordingProcess: ChildProcess | null = null;
   private ws: WebSocket | null = null;
   private tempDir: vscode.Uri;
-  private audioFilePath: string;
+  private audioFilePath: string | undefined = undefined;
 
   constructor(
     context: vscode.ExtensionContext,
@@ -28,17 +28,6 @@ export default class SpeechTranscription {
     if (!fs.existsSync(this.tempDir.fsPath)) {
       fs.mkdirSync(this.tempDir.fsPath, { recursive: true });
     }
-
-    this.audioFilePath = vscode.Uri.joinPath(
-      this.tempDir,
-      'recording.wav',
-    ).fsPath;
-    this.outputChannel.appendLine(
-      `Global storage path: ${this.tempDir.fsPath}`,
-    );
-    this.outputChannel.appendLine(
-      `Audio file will be saved as: ${this.audioFilePath}`,
-    );
   }
 
   async checkIfInstalled(command: string): Promise<boolean> {
@@ -54,12 +43,19 @@ export default class SpeechTranscription {
       `Starting recording to file: ${this.audioFilePath}`,
     );
 
+    this.generateAudioFilePath();
+
     // Remove any existing recording file
-    if (fs.existsSync(this.audioFilePath)) {
+    if (this.audioFilePath && fs.existsSync(this.audioFilePath)) {
       fs.unlinkSync(this.audioFilePath);
     }
 
-    // Start audio recording using SoX
+    if (!this.audioFilePath) {
+      this.outputChannel.appendLine('Audio file path is undefined');
+      return;
+    }
+
+    // Start audio recording using SoX without a duration limit
     this.recordingProcess = spawn('sox', [
       '-d',
       '-t',
@@ -74,7 +70,7 @@ export default class SpeechTranscription {
     ]);
 
     this.recordingProcess.stderr?.on('data', (data) => {
-      this.outputChannel.appendLine(`Whisper Assistant: SoX error: ${data}`);
+      this.outputChannel.appendLine(`SoX error: ${data}`);
     });
 
     this.outputChannel.appendLine('Recording started...');
@@ -83,24 +79,28 @@ export default class SpeechTranscription {
   async stopRecording(): Promise<void> {
     this.outputChannel.appendLine('Whisper Assistant: Stopping recording');
     if (this.recordingProcess) {
-      this.recordingProcess.kill();
-      this.recordingProcess = null;
+      return new Promise<void>((resolve) => {
+        this.recordingProcess?.on('close', () => {
+          this.recordingProcess = null;
+          this.outputChannel.appendLine('Recording stopped.');
+
+          // Check if the file exists and has content
+          if (this.audioFilePath && fs.existsSync(this.audioFilePath)) {
+            const stats = fs.statSync(this.audioFilePath);
+            this.outputChannel.appendLine(
+              `Audio file created. Size: ${stats.size} bytes`,
+            );
+          } else {
+            this.outputChannel.appendLine('Audio file was not created');
+          }
+
+          resolve();
+        });
+
+        // Send SIGTERM signal to gracefully stop the recording
+        this.recordingProcess?.kill('SIGTERM');
+      });
     }
-
-    // Wait a bit for the file to be fully written
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Check if the file exists and has content
-    if (fs.existsSync(this.audioFilePath)) {
-      const stats = fs.statSync(this.audioFilePath);
-      this.outputChannel.appendLine(
-        `Audio file created. Size: ${stats.size} bytes`,
-      );
-    } else {
-      this.outputChannel.appendLine('Audio file was not created');
-    }
-
-    this.outputChannel.appendLine('Recording stopped.');
   }
 
   async transcribeRecording(): Promise<string | undefined> {
@@ -108,6 +108,11 @@ export default class SpeechTranscription {
       this.outputChannel.appendLine(
         `Attempting to transcribe file: ${this.audioFilePath}`,
       );
+
+      if (!this.audioFilePath) {
+        this.outputChannel.appendLine('Audio file path is undefined');
+        return reject(new Error('Audio file path is undefined'));
+      }
 
       if (!fs.existsSync(this.audioFilePath)) {
         this.outputChannel.appendLine(
@@ -123,6 +128,11 @@ export default class SpeechTranscription {
 
       this.ws.on('open', () => {
         this.outputChannel.appendLine('WebSocket connection opened');
+        if (!this.audioFilePath) {
+          this.outputChannel.appendLine('Audio file path is undefined');
+          return reject(new Error('Audio file path is undefined'));
+        }
+
         const fileStream = fs.createReadStream(this.audioFilePath);
 
         fileStream.on('data', (chunk) => {
@@ -149,11 +159,13 @@ export default class SpeechTranscription {
         this.outputChannel.appendLine(`Received transcription: ${data}`);
         const transcription = data.toString();
         vscode.window.showInformationMessage(transcription);
+        this.deleteFiles();
         resolve(transcription);
       });
 
       this.ws.on('error', (error) => {
         this.outputChannel.appendLine(`WebSocket error: ${error}`);
+        this.deleteFiles();
         reject(error);
       });
 
@@ -169,22 +181,26 @@ export default class SpeechTranscription {
           );
         }
       });
-
-      // Add a timeout to prevent hanging indefinitely
-      setTimeout(() => {
-        if (this.ws?.readyState === WebSocket.OPEN) {
-          this.ws.close();
-          reject(new Error('Transcription timed out'));
-        }
-      }, 30000); // 30 seconds timeout
     });
+  }
+
+  generateAudioFilePath(): void {
+    const tempFileName = `recording_${uuidv4()}.wav`;
+    this.audioFilePath = vscode.Uri.joinPath(this.tempDir, tempFileName).fsPath;
+    this.outputChannel.appendLine(
+      `Global storage path: ${this.tempDir.fsPath}`,
+    );
+    this.outputChannel.appendLine(
+      `Audio file will be saved as: ${this.audioFilePath}`,
+    );
   }
 
   deleteFiles(): void {
     try {
-      if (fs.existsSync(this.audioFilePath)) {
+      if (this.audioFilePath && fs.existsSync(this.audioFilePath)) {
         fs.unlinkSync(this.audioFilePath);
         this.outputChannel.appendLine('Temporary audio file deleted.');
+        this.audioFilePath = undefined;
       }
     } catch (error) {
       this.outputChannel.appendLine(

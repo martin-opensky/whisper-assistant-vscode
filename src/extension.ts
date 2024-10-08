@@ -78,12 +78,15 @@ async function checkIfDockerInstalled(): Promise<boolean> {
 
 async function startDockerContainer() {
   try {
-    const serverPath = path.join(__dirname, '..', 'src', 'server');
-    await execAsync(`docker build -t whisper-assistant-server "${serverPath}"`);
-    await execAsync(`docker run -d -p 8765:8765 whisper-assistant-server`);
+    // const serverPath = path.join(__dirname, '..', 'src', 'server');
+    // await execAsync(`docker build -t whisper-assistant-server "${serverPath}"`);
+    await execAsync(
+      `docker run -d --name whisper-assistant-server-container -p 8765:8765 whisper-assistant-server`,
+    );
+    vscode.window.showInformationMessage('Docker container started');
   } catch (error) {
-    vscode.window.showErrorMessage(
-      'Failed to start Docker container: ' + error,
+    vscode.window.showInformationMessage(
+      'Docker container may already be running',
     );
   }
 }
@@ -161,9 +164,6 @@ export async function toggleRecordingCommand(): Promise<void> {
           updateStatusBarItem();
         }
       });
-
-      // Delete the recording/transcription files
-      state.speechTranscription.deleteFiles();
     }
   }
 }
@@ -243,7 +243,6 @@ export function deactivate() {
 
   if (state.speechTranscription) {
     state.speechTranscription.stopRecording();
-    state.speechTranscription.deleteFiles();
   }
 
   // Reset variables
@@ -253,19 +252,6 @@ export function deactivate() {
 
   console.log('Your extension "Whisper Assistant" is now deactivated');
 }
-
-// function getWhisperModel(): WhisperModel {
-//   const config = vscode.workspace.getConfiguration('whisper-assistant');
-//   const whisperModel = config.get('model') as WhisperModel;
-//   if (!whisperModel) {
-//     state.outputChannel?.appendLine(
-//       'Whisper Assistant: No whisper model found in configuration',
-//     );
-//     return 'base';
-//   }
-
-//   return whisperModel;
-// }
 
 export function initializeOutputChannel(): void {
   state.outputChannel = vscode.window.createOutputChannel('Whisper Assistant');

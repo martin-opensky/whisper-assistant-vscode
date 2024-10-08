@@ -3,7 +3,7 @@ import websockets
 import io
 from faster_whisper import WhisperModel
 
-model = WhisperModel("base", device="cpu", compute_type="int8")
+model = WhisperModel("small", device="cpu", compute_type="int8")
 
 async def transcribe(websocket, path):
     buffer = io.BytesIO()
