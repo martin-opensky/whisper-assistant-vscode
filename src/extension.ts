@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as cp from 'child_process';
 import SpeechTranscription from './speech-transcription';
-import * as path from 'path';
 
 interface ExtensionState {
   myStatusBarItem: vscode.StatusBarItem | undefined;
@@ -23,6 +22,9 @@ export const state: ExtensionState = {
   isTranscribing: false,
   recordingStartTime: undefined,
 };
+
+const dockerContainerName = 'whisper-assistant-server-container';
+const dockerImageName = 'whisper-assistant-server';
 
 export async function activate(context: vscode.ExtensionContext) {
   initializeWorkspace();
@@ -81,12 +83,28 @@ async function startDockerContainer() {
     // const serverPath = path.join(__dirname, '..', 'src', 'server');
     // await execAsync(`docker build -t whisper-assistant-server "${serverPath}"`);
     await execAsync(
-      `docker run -d --name whisper-assistant-server-container -p 8765:8765 whisper-assistant-server`,
+      `docker run -d --name ${dockerContainerName} -p 8765:8765 ${dockerImageName}`,
     );
-    vscode.window.showInformationMessage('Docker container started');
+    state.outputChannel?.appendLine(
+      'Whisper Assistant: Docker container started',
+    );
   } catch (error) {
-    vscode.window.showInformationMessage(
-      'Docker container may already be running',
+    state.outputChannel?.appendLine(
+      'Whisper Assistant: Docker container may already be running',
+    );
+  }
+}
+
+async function stopDockerContainer() {
+  try {
+    await execAsync(`docker stop ${dockerContainerName}`);
+    await execAsync(`docker rm ${dockerContainerName}`);
+    state.outputChannel?.appendLine(
+      'Whisper Assistant: Docker container stopped',
+    );
+  } catch (error) {
+    state.outputChannel?.appendLine(
+      'Whisper Assistant: Docker container not running',
     );
   }
 }
@@ -236,7 +254,7 @@ async function finalizeProgress(
   await new Promise<void>((resolve) => setTimeout(resolve, 2500));
 }
 
-export function deactivate() {
+export async function deactivate() {
   if (state.myStatusBarItem) {
     state.myStatusBarItem.dispose();
   }
@@ -249,6 +267,9 @@ export function deactivate() {
   state.isRecording = false;
   state.isTranscribing = false;
   state.recordingStartTime = undefined;
+
+  // Causes problems when debugging
+  // await stopDockerContainer();
 
   console.log('Your extension "Whisper Assistant" is now deactivated');
 }

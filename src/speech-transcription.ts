@@ -158,7 +158,6 @@ export default class SpeechTranscription {
       this.ws.on('message', (data) => {
         this.outputChannel.appendLine(`Received transcription: ${data}`);
         const transcription = data.toString();
-        vscode.window.showInformationMessage(transcription);
         this.deleteFiles();
         resolve(transcription);
       });
