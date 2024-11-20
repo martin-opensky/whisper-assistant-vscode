@@ -68,7 +68,8 @@ class SpeechTranscription {
     }
 
     const baseURLs: Record<ApiProvider, string> = {
-      localhost: config.get('customEndpoint') || 'http://localhost:8000',
+      localhost:
+        (config.get('customEndpoint') || 'http://localhost:4444') + '/v1',
       openai: 'https://api.openai.com/v1',
       groq: 'https://api.groq.com/openai/v1',
     };
@@ -180,6 +181,10 @@ class SpeechTranscription {
       this.outputChannel.appendLine(
         `Whisper Assistant: Transcription: ${result.text}`,
       );
+
+      if (result?.text?.length === 0) {
+        return undefined;
+      }
 
       return result;
     } catch (error) {

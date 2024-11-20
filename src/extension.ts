@@ -118,35 +118,55 @@ export async function toggleRecordingCommand(): Promise<void> {
 
       updateStatusBarItem();
 
+      // Get the current API provider
+      const config = vscode.workspace.getConfiguration('whisper-assistant');
+      const provider = config.get<string>('apiProvider') || 'openai';
+      const message = `Transcribing using ${
+        provider.charAt(0).toUpperCase() + provider.slice(1)
+      } API`;
+
       const progressOptions = {
         location: vscode.ProgressLocation.Notification,
         cancellable: false,
+        title: message,
       };
 
       try {
         await vscode.window.withProgress(progressOptions, async (progress) => {
           const incrementData = initializeIncrementData();
-          const interval = startProgressInterval(progress, incrementData);
+          const interval = startProgressInterval(
+            progress,
+            incrementData,
+            message,
+          );
 
-          if (state.speechTranscription !== undefined) {
-            const transcription: Transcription | undefined =
-              await state.speechTranscription.transcribeRecording();
+          try {
+            if (state.speechTranscription !== undefined) {
+              const transcription: Transcription | undefined =
+                await state.speechTranscription.transcribeRecording();
 
-            if (transcription) {
-              await vscode.env.clipboard.writeText(transcription.text);
-              await vscode.commands.executeCommand(
-                'editor.action.clipboardPasteAction',
-              );
+              if (transcription) {
+                await vscode.env.clipboard.writeText(transcription.text);
+                await vscode.commands.executeCommand(
+                  'editor.action.clipboardPasteAction',
+                );
+              }
             }
+          } catch (error) {
+            progress.report({
+              increment: 0,
+              message: 'Transcription failed',
+            });
+            throw error; // Re-throw to handle in outer catch
           }
 
           await finalizeProgress(progress, interval, incrementData);
         });
       } catch (error) {
-        // Show error in status bar
+        // Handle any errors here
         if (state.myStatusBarItem) {
           state.myStatusBarItem.text = '$(error) Transcription failed';
-          setTimeout(() => updateStatusBarItem(), 3000); // Reset after 3 seconds
+          setTimeout(() => updateStatusBarItem(), 3000);
         }
       } finally {
         // Always cleanup, even if there was an error
@@ -199,13 +219,14 @@ function initializeIncrementData(): {
 function startProgressInterval(
   progress: vscode.Progress<{ increment: number; message: string }>,
   incrementData: { increment: number; incrementInterval: number },
+  message: string,
 ): NodeJS.Timeout {
   const interval = setInterval(() => {
-    incrementData.increment += 1; // increment by 1% to slow down the progress
+    incrementData.increment += 1;
 
     progress.report({
       increment: incrementData.increment,
-      message: 'Transcribing...',
+      message: '',
     });
   }, incrementData.incrementInterval);
 
@@ -218,14 +239,15 @@ async function finalizeProgress(
   incrementData: { increment: number; incrementInterval: number },
 ): Promise<void> {
   clearInterval(interval);
+
   progress.report({
     increment: 100,
-    message: 'Text has been transcribed and saved to the clipboard.',
+    message: 'Text has been saved to the clipboard.',
   });
+
   state.isTranscribing = false;
   state.recordingStartTime = undefined;
   updateStatusBarItem();
-  // Delay the closing of the progress pop-up by 2.5 second to allow the user to see the completion message
   await new Promise<void>((resolve) => setTimeout(resolve, 2500));
 }
 

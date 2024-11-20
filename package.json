@@ -40,7 +40,7 @@
       "properties": {
         "whisper-assistant.apiProvider": {
           "type": "string",
-          "default": "groq",
+          "default": "localhost",
           "enum": [
             "localhost",
             "openai",
@@ -50,12 +50,12 @@
         },
         "whisper-assistant.apiKey": {
           "type": "string",
-          "default": "",
+          "default": "localhost",
           "description": "API key for the selected provider"
         },
         "whisper-assistant.customEndpoint": {
           "type": "string",
-          "default": "http://localhost:8000",
+          "default": "http://localhost:4444",
           "description": "Custom endpoint URL (used for localhost)"
         }
       }

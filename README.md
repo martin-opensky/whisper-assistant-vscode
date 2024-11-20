@@ -92,3 +92,91 @@ Please note that this extension has been primarily tested on Mac OS. While effor
 ```bash
 
 ```
+
+## Local Development with Faster Whisper
+
+This extension supports using a local Faster Whisper model through Docker. This provides faster transcription and doesn't require an API key.
+
+### Setting up the Local Server
+
+1. Install Docker on your system
+2. Build the Docker image:
+   ```bash
+   docker build -t whisper-assistant-server .
+   ```
+3. Run the container:
+   ```bash
+   docker run -d -p 4444:4444 --name whisper-assistant whisper-assistant-server
+   ```
+
+### Using the Local Server
+
+1. Open VSCode settings (File > Preferences > Settings)
+2. Search for "Whisper Assistant"
+3. Set "Api Provider" to "localhost"
+4. Set "Api Key" to any non-empty string (e.g., "local")
+5. The extension will now use your local Faster Whisper server
+
+### Available Models
+
+The local server uses the "base" model by default. To use a different model, modify the `server/main.py` file:
+
+```python
+model = WhisperModel("large-v2", device="cpu", compute_type="int8")
+```
+
+Available models:
+
+- tiny
+- base
+- small
+- medium
+- large-v2
+- large-v3
+
+Note: Larger models require more memory but provide better accuracy.
+
+### Using GPU Acceleration
+
+If you have a CUDA-capable GPU, you can modify the Dockerfile to use the GPU version:
+
+```dockerfile
+FROM python:3.10-slim
+
+# Install CUDA dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    ffmpeg \
+    cuda-toolkit-11-8 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ... rest of Dockerfile ...
+```
+
+Then update the model initialization in `server/main.py`:
+
+```python
+model = WhisperModel("base", device="cuda", compute_type="float16")
+```
+
+Run the container with GPU support:
+
+```bash
+docker run -d -p 4444:4444 --gpus all --name whisper-assistant whisper-assistant-server
+```
+
+### Troubleshooting
+
+1. Check if the server is running:
+
+   ```bash
+   curl http://localhost:4444/health
+   ```
+
+2. View server logs:
+
+   ```bash
+   docker logs whisper-assistant
+   ```
+
+3. If you encounter memory issues, try a smaller model or increase Docker's memory limit.
