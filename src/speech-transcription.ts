@@ -23,7 +23,7 @@ export interface Transcription {
   language: string;
 }
 
-export type WhisperModel = 'whisper-large-v3-turbo';
+export type WhisperModel = 'whisper-1' | 'whisper-large-v3-turbo';
 
 type ApiProvider = 'localhost' | 'openai' | 'groq';
 
@@ -32,7 +32,11 @@ interface ApiConfig {
   apiKey: string;
 }
 
-const DEFAULT_MODEL: WhisperModel = 'whisper-large-v3-turbo';
+const PROVIDER_MODELS: Record<ApiProvider, WhisperModel> = {
+  openai: 'whisper-1',
+  groq: 'whisper-large-v3-turbo',
+  localhost: 'whisper-1', // default to OpenAI model for localhost
+};
 
 class SpeechTranscription {
   private fileName: string = 'recording';
@@ -137,9 +141,15 @@ class SpeechTranscription {
         path.join(this.tempDir, `${this.fileName}.wav`),
       );
 
+      const model = PROVIDER_MODELS[provider];
+
+      this.outputChannel.appendLine(
+        `Whisper Assistant: Using model ${model} for ${provider}`,
+      );
+
       const transcription = await this.openai.audio.transcriptions.create({
         file: audioFile,
-        model: DEFAULT_MODEL,
+        model: model,
         language: 'en',
         // eslint-disable-next-line @typescript-eslint/naming-convention
         response_format: 'verbose_json',
