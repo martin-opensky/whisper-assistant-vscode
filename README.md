@@ -84,3 +84,11 @@ By integrating Cursor.so with Whisper Assistant, you can provide extensive instr
 # Disclaimer
 
 Please note that this extension has been primarily tested on Mac OS. While efforts have been made to ensure compatibility, its functionality on other platforms such as Windows or Linux cannot be fully guaranteed. I welcome and appreciate any pull requests to address potential issues encountered on these platforms.
+
+## Development Setup
+
+1. Copy the settings template:
+
+```bash
+
+```

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import SpeechTranscription, {
   Transcription,
   WhisperModel,
@@ -27,26 +28,26 @@ export const state: ExtensionState = {
 };
 
 export async function activate(context: vscode.ExtensionContext) {
-  initializeWorkspace();
+  // Create output channel
+  const outputChannel = vscode.window.createOutputChannel('Whisper Assistant');
 
-  if (state.workspacePath === undefined || state.outputDir === undefined) {
-    console.log('Please open a workspace directory before starting recording.');
-    return;
+  // Get the storage path for the extension
+  const storagePath = context.globalStorageUri.fsPath;
+
+  // Ensure storage directory exists
+  if (!fs.existsSync(storagePath)) {
+    fs.mkdirSync(storagePath, { recursive: true });
   }
 
-  // Initialize the Recording class
-  initializeOutputChannel();
+  // Initialize SpeechTranscription with the storage path
   state.speechTranscription = new SpeechTranscription(
-    state.outputDir as string,
-    state.outputChannel as vscode.OutputChannel,
+    storagePath,
+    outputChannel,
   );
 
-  // Check if Sox and Whisper are installed
+  // Check if Sox is installed (we still need this for recording)
   const isSoxInstalled = await state.speechTranscription?.checkIfInstalled(
     'sox',
-  );
-  const isWhisperInstalled = await state.speechTranscription?.checkIfInstalled(
-    'whisper',
   );
 
   if (!isSoxInstalled) {
@@ -55,23 +56,18 @@ export async function activate(context: vscode.ExtensionContext) {
     );
   }
 
-  if (!isWhisperInstalled) {
-    vscode.window.showErrorMessage(
-      'Whisper is not installed. Please install Whisper for this extension to work properly.',
-    );
+  // Initialize the extension regardless of Sox installation
+  registerCommands(context);
+  initializeStatusBarItem();
+  updateStatusBarItem();
+  
+  if (state.myStatusBarItem !== undefined) {
+    context.subscriptions.push(state.myStatusBarItem);
   }
-
-  if (isSoxInstalled && isWhisperInstalled) {
-    registerCommands(context);
-    initializeStatusBarItem();
-    updateStatusBarItem();
-    if (state.myStatusBarItem !== undefined) {
-      context.subscriptions.push(state.myStatusBarItem);
-    }
-    console.log(
-      'Congratulations, your extension "Whisper Assistant" is now active!',
-    );
-  }
+  
+  console.log(
+    'Congratulations, your extension "Whisper Assistant" is now active!',
+  );
 }
 
 export function initializeStatusBarItem(): void {
@@ -105,12 +101,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 }
 
 export async function toggleRecordingCommand(): Promise<void> {
-  if (
-    state.workspacePath !== undefined &&
-    state.outputDir !== undefined &&
-    state.speechTranscription !== undefined &&
-    !state.isTranscribing
-  ) {
+  if (state.speechTranscription !== undefined && !state.isTranscribing) {
     if (!state.isRecording) {
       state.speechTranscription.startRecording();
       state.recordingStartTime = Date.now();
@@ -119,7 +110,7 @@ export async function toggleRecordingCommand(): Promise<void> {
 
       setInterval(updateStatusBarItem, 1000);
     } else {
-      state.speechTranscription.stopRecording();
+      await state.speechTranscription.stopRecording();
       state.isTranscribing = true;
       state.isRecording = false;
 
@@ -130,30 +121,39 @@ export async function toggleRecordingCommand(): Promise<void> {
         cancellable: false,
       };
 
-      await vscode.window.withProgress(progressOptions, async (progress) => {
-        const incrementData = initializeIncrementData();
-        const interval = startProgressInterval(progress, incrementData);
+      try {
+        await vscode.window.withProgress(progressOptions, async (progress) => {
+          const incrementData = initializeIncrementData();
+          const interval = startProgressInterval(progress, incrementData);
 
-        if (state.speechTranscription !== undefined) {
-          const model: WhisperModel = getWhisperModel();
-          const transcription: Transcription | undefined =
-            await state.speechTranscription.transcribeRecording(model);
+          if (state.speechTranscription !== undefined) {
+            const transcription: Transcription | undefined =
+              await state.speechTranscription.transcribeRecording();
 
-          if (transcription) {
-            vscode.env.clipboard.writeText(transcription.text).then(() => {
-              vscode.commands.executeCommand(
+            if (transcription) {
+              await vscode.env.clipboard.writeText(transcription.text);
+              await vscode.commands.executeCommand(
                 'editor.action.clipboardPasteAction',
               );
-            });
+            }
           }
+
+          await finalizeProgress(progress, interval, incrementData);
+        });
+      } catch (error) {
+        // Show error in status bar
+        if (state.myStatusBarItem) {
+          state.myStatusBarItem.text = '$(error) Transcription failed';
+          setTimeout(() => updateStatusBarItem(), 3000); // Reset after 3 seconds
         }
-
-        await finalizeProgress(progress, interval, incrementData);
-      });
-
-      // Delete the recording/transcription files
-      if (state.speechTranscription !== undefined) {
-        state.speechTranscription.deleteFiles();
+      } finally {
+        // Always cleanup, even if there was an error
+        if (state.speechTranscription !== undefined) {
+          state.speechTranscription.deleteFiles();
+        }
+        state.isTranscribing = false;
+        state.recordingStartTime = undefined;
+        updateStatusBarItem();
       }
     }
   }
@@ -234,6 +234,11 @@ export function deactivate() {
     state.myStatusBarItem.dispose();
   }
 
+  // Cleanup temporary files
+  if (state.speechTranscription) {
+    state.speechTranscription.cleanup();
+  }
+
   // Reset variables
   state.isRecording = false;
   state.isTranscribing = false;
@@ -244,19 +249,6 @@ export function deactivate() {
 
   // Log the deactivation
   console.log('Your extension "Whisper Assistant" is now deactivated');
-}
-
-function getWhisperModel(): WhisperModel {
-  const config = vscode.workspace.getConfiguration('whisper-assistant');
-  const whisperModel = config.get('model') as WhisperModel;
-  if (!whisperModel) {
-    state.outputChannel?.appendLine(
-      'Whisper Assistant: No whisper model found in configuration',
-    );
-    return 'base';
-  }
-
-  return whisperModel;
 }
 
 export function initializeOutputChannel(): void {
