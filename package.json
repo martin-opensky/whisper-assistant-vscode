@@ -38,17 +38,25 @@
       "type": "object",
       "title": "Whisper Assistant Settings",
       "properties": {
-        "whisper-assistant.model": {
+        "whisper-assistant.apiProvider": {
           "type": "string",
-          "default": "base",
+          "default": "localhost",
           "enum": [
-            "tiny",
-            "base",
-            "small",
-            "medium",
-            "large"
+            "localhost",
+            "openai",
+            "groq"
           ],
-          "description": "Set the whisper model to use. Base is the default."
+          "description": "Select the API provider for transcription"
+        },
+        "whisper-assistant.apiKey": {
+          "type": "string",
+          "default": "localhost",
+          "description": "API key for the selected provider"
+        },
+        "whisper-assistant.customEndpoint": {
+          "type": "string",
+          "default": "http://localhost:4444",
+          "description": "Custom endpoint URL (used for localhost)"
         }
       }
     }
@@ -57,11 +65,12 @@
     "vscode:prepublish": "yarn run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "pretest": "yarn run compile && yarn run lint",
+    "pretest": "yarn run compile && yarn run lint && rm -rf .vscode-test",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js",
     "package": "vsce package",
-    "publish": "vsce publish"
+    "publish": "vsce publish",
+    "clean": "rm -rf out .vscode-test"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.1",
@@ -74,5 +83,8 @@
     "glob": "^10.3.3",
     "mocha": "^10.2.0",
     "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "openai": "^4.72.0"
   }
 }
