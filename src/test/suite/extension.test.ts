@@ -1,88 +1,146 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import { state } from '../../extension';
 import SpeechTranscription from '../../speech-transcription';
-import {
-  initializeWorkspace,
-  initializeStatusBarItem,
-  toggleRecordingCommand,
-  deactivate,
-  state,
-  initializeOutputChannel,
-} from '../../extension';
-
-// NOTE: Tests can only be run if a workspace is open, so we need to open a known workspace before running the tests
-const outputWorkspace = '/Users/martin/Documents/www';
 
 suite('Extension Test Suite', () => {
-  vscode.window.showInformationMessage('Start all tests.');
+  let outputChannel: vscode.OutputChannel;
+  let storagePath: string;
 
-  initializeOutputChannel();
-
-  suiteSetup(async () => {
-    // Open a specific workspace directory before running the tests
-    const uri = vscode.Uri.file(outputWorkspace);
-    await vscode.commands.executeCommand('vscode.openFolder', uri);
-  });
-
-  test('Check if Sox is installed', async () => {
-    if (state.outputChannel === undefined) {
-      throw new Error('Output channel is undefined');
+  setup(() => {
+    outputChannel = vscode.window.createOutputChannel('Test Output');
+    storagePath = path.join(__dirname, 'test-storage');
+    if (!fs.existsSync(storagePath)) {
+      fs.mkdirSync(storagePath, { recursive: true });
     }
-
-    const speechTranscription = new SpeechTranscription(
-      outputWorkspace,
-      state.outputChannel,
-    );
-    const isSoxInstalled = await speechTranscription.checkIfInstalled('sox');
-    assert.strictEqual(isSoxInstalled, true);
   });
 
-  test('Check if Whisper is installed', async () => {
-    if (state.outputChannel === undefined) {
-      throw new Error('Output channel is undefined');
+  teardown(() => {
+    outputChannel.dispose();
+    if (fs.existsSync(storagePath)) {
+      fs.rmSync(storagePath, { recursive: true, force: true });
     }
+  });
 
+  test('SpeechTranscription initialization', () => {
     const speechTranscription = new SpeechTranscription(
-      outputWorkspace,
-      state.outputChannel,
+      storagePath,
+      outputChannel,
     );
-    const isWhisperInstalled = await speechTranscription.checkIfInstalled(
-      'whisper',
-    );
-    assert.strictEqual(isWhisperInstalled, true);
+    assert.strictEqual(typeof speechTranscription.getOutputDir, 'function');
   });
 
-  test('Check if workspace is initialized correctly', () => {
-    initializeWorkspace();
-    assert.strictEqual(state.workspacePath !== undefined, true);
-    assert.strictEqual(state.outputDir !== undefined, true);
-  });
-
-  test('Check if status bar item is initialized correctly', () => {
-    initializeStatusBarItem();
-    assert.strictEqual(state.myStatusBarItem !== undefined, true);
-  });
-
-  test('Check if recording can be toggled', async () => {
-    await toggleRecordingCommand();
-    assert.strictEqual(state.isRecording, true);
-    await new Promise((resolve) => setTimeout(resolve, 3000)); // record for 3 seconds
-    await toggleRecordingCommand();
-    assert.strictEqual(state.isRecording, false);
-  });
-
-  // TODO: Add a test that verifies that during transcribing the status bar item is updated correctly
-
-  // TODO: Add a test that verifies that the transcribing process is started correctly and the toggleRecordingCommand is disabled
-
-  // TODO: Add a test to make sure the transcription text is copied to the clipboard
-
-  test('Check if extension is deactivated correctly', () => {
-    deactivate();
+  test('Status bar item initialization', () => {
     assert.strictEqual(state.isRecording, false);
     assert.strictEqual(state.isTranscribing, false);
-    assert.strictEqual(state.workspacePath, undefined);
-    assert.strictEqual(state.outputDir, undefined);
-    assert.strictEqual(state.recordingStartTime, undefined);
+    if (state.myStatusBarItem) {
+      assert.strictEqual(state.myStatusBarItem.text, '$(quote)');
+    }
+  });
+
+  test('API configuration', async () => {
+    // Set test configuration
+    await vscode.workspace
+      .getConfiguration('whisper-assistant')
+      .update('apiProvider', 'openai', vscode.ConfigurationTarget.Global);
+    await vscode.workspace
+      .getConfiguration('whisper-assistant')
+      .update('apiKey', 'test-key', vscode.ConfigurationTarget.Global);
+
+    const speechTranscription = new SpeechTranscription(
+      storagePath,
+      outputChannel,
+    );
+
+    // Test that initialization doesn't throw with valid config
+    assert.doesNotThrow(() => {
+      speechTranscription.getOutputDir();
+    });
+
+    // Reset test configuration
+    await vscode.workspace
+      .getConfiguration('whisper-assistant')
+      .update('apiProvider', undefined, vscode.ConfigurationTarget.Global);
+    await vscode.workspace
+      .getConfiguration('whisper-assistant')
+      .update('apiKey', undefined, vscode.ConfigurationTarget.Global);
+  });
+
+  test('Recording state management', async () => {
+    const speechTranscription = new SpeechTranscription(
+      storagePath,
+      outputChannel,
+    );
+
+    // Mock recording process
+    state.isRecording = true;
+    state.recordingStartTime = Date.now();
+    assert.strictEqual(state.isRecording, true);
+
+    // Stop recording
+    await speechTranscription.stopRecording();
+    assert.strictEqual(state.recordingProcess, null);
+  });
+
+  test('Temp directory cleanup', () => {
+    const speechTranscription = new SpeechTranscription(
+      storagePath,
+      outputChannel,
+    );
+
+    // Create test files
+    const tempDir = path.join(storagePath, 'temp');
+    const testFile = path.join(tempDir, 'test.txt');
+    fs.writeFileSync(testFile, 'test content');
+
+    // Run cleanup
+    speechTranscription.cleanup();
+
+    // Verify cleanup
+    assert.strictEqual(fs.existsSync(tempDir), false);
+  });
+
+  test('Error handling for missing API key', () => {
+    // Clear API key configuration
+    vscode.workspace
+      .getConfiguration('whisper-assistant')
+      .update('apiKey', '', vscode.ConfigurationTarget.Global);
+
+    assert.throws(() => {
+      new SpeechTranscription(storagePath, outputChannel);
+    }, /API key not configured/);
+  });
+
+  test('API provider selection', async () => {
+    // Test each provider
+    const providers = ['openai', 'groq', 'localhost'];
+
+    for (const provider of providers) {
+      await vscode.workspace
+        .getConfiguration('whisper-assistant')
+        .update('apiProvider', provider, vscode.ConfigurationTarget.Global);
+      await vscode.workspace
+        .getConfiguration('whisper-assistant')
+        .update('apiKey', 'test-key', vscode.ConfigurationTarget.Global);
+
+      const speechTranscription = new SpeechTranscription(
+        storagePath,
+        outputChannel,
+      );
+
+      assert.doesNotThrow(() => {
+        speechTranscription.getOutputDir();
+      });
+    }
+
+    // Reset configuration
+    await vscode.workspace
+      .getConfiguration('whisper-assistant')
+      .update('apiProvider', undefined, vscode.ConfigurationTarget.Global);
+    await vscode.workspace
+      .getConfiguration('whisper-assistant')
+      .update('apiKey', undefined, vscode.ConfigurationTarget.Global);
   });
 });

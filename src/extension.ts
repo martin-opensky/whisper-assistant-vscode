@@ -15,6 +15,7 @@ interface ExtensionState {
   outputDir: string | undefined;
   recordingStartTime: number | undefined;
   outputChannel?: vscode.OutputChannel;
+  recordingProcess: any;
 }
 
 export const state: ExtensionState = {
@@ -25,6 +26,7 @@ export const state: ExtensionState = {
   workspacePath: undefined,
   outputDir: undefined,
   recordingStartTime: undefined,
+  recordingProcess: null,
 };
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -60,11 +62,11 @@ export async function activate(context: vscode.ExtensionContext) {
   registerCommands(context);
   initializeStatusBarItem();
   updateStatusBarItem();
-  
+
   if (state.myStatusBarItem !== undefined) {
     context.subscriptions.push(state.myStatusBarItem);
   }
-  
+
   console.log(
     'Congratulations, your extension "Whisper Assistant" is now active!',
   );
