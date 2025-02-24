@@ -5,3 +5,9 @@ node_modules
 *.vsix
 /.whisper
 .vscode/settings.json
+.vscode/extensions.json
+.yarnrc
+*.wav
+.cursor/*
+package-lock.json
+.yarn/*
