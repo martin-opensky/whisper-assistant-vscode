@@ -39,7 +39,7 @@ For more details about Whisper, visit the [Whisper OpenAI GitHub page](https://g
   sudo apt install sox pulseaudio
   ```
 
-### 2. Whisper Installation (For Local Processing)
+### 2. Whisper Installation
 
 If you plan to use local processing, follow these steps:
 
@@ -73,7 +73,7 @@ Install the Whisper Assistant extension:
 3. Search for "Whisper Assistant"
 4. Click "Install"
 
-### 4. API Provider Configuration (Optional)
+### 4. API Provider Configuration
 
 Whisper Assistant supports multiple API providers for transcription:
 
