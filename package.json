@@ -2,7 +2,7 @@
   "name": "whisper-assistant",
   "displayName": "Whisper Assistant",
   "description": "Leveraging OpenAI's Whisper to transcribe your speech, enhancing your coding efficiency and experience.",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "publisher": "MartinOpenSky",
   "icon": "images/whisper-assistant.png",
   "repository": {
@@ -69,7 +69,7 @@
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js",
     "package": "vsce package",
-    "publish": "vsce publish",
+    "publish": "vsce package && vsce publish",
     "clean": "rm -rf out .vscode-test"
   },
   "devDependencies": {
@@ -79,12 +79,12 @@
     "@typescript-eslint/eslint-plugin": "^6.4.1",
     "@typescript-eslint/parser": "^6.4.1",
     "@vscode/test-electron": "^2.3.4",
+    "@vscode/vsce": "^2.24.0",
     "eslint": "^8.47.0",
     "glob": "^10.3.3",
     "mocha": "^10.2.0",
+    "openai": "^4.90.0",
     "typescript": "^5.1.6"
   },
-  "dependencies": {
-    "openai": "^4.72.0"
-  }
+  "dependencies": {}
 }

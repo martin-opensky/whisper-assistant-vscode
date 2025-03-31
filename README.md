@@ -43,9 +43,7 @@ To install and setup Whisper Assistant, follow these steps:
 
 # How to Use Whisper Assistant
 
-1. **Initialization**: Upon loading Visual Studio Code, the extension verifies the correct installation of SoX and Whisper. If any issues are detected, an error message will be displayed. These dependencies must be installed to use the extension.
-
-  <img src="https://raw.githubusercontent.com/martin-opensky/whisper-assistant-vscode/main/images/errors.png" alt="Quote icon" style="width: 360px; height: auto; ">
+1. **Initialization**: Upon loading Visual Studio Code, the extension verifies the correct installation of SoX. If any issues are detected, an error message will be displayed.
 
 Once initialization is complete, a quote icon will appear in the bottom right status bar.
 
@@ -85,84 +83,65 @@ By integrating Cursor.so with Whisper Assistant, you can provide extensive instr
 
 Please note that this extension has been primarily tested on Mac OS. While efforts have been made to ensure compatibility, its functionality on other platforms such as Windows or Linux cannot be fully guaranteed. I welcome and appreciate any pull requests to address potential issues encountered on these platforms.
 
-## Development Setup
-
-1. Copy the settings template:
-
-```bash
-
-```
-
 ## Local Development with Faster Whisper
 
 This extension supports using a local Faster Whisper model through Docker. This provides faster transcription and doesn't require an API key.
 
-### Setting up the Local Server
+### Quick Start with Docker
 
-1. Install Docker on your system
-2. Build the Docker image:
-   ```bash
-   docker build -t whisper-assistant-server .
-   ```
-3. Run the container:
-   ```bash
-   docker run -d -p 4444:4444 --name whisper-assistant whisper-assistant-server
-   ```
+The fastest way to get started is using our pre-built Docker image:
 
-### Using the Local Server
+```bash
+docker run -d -p 4444:4444 --name whisper-assistant martinopensky/whisper-assistant:latest
+```
+
+Then configure VSCode:
 
 1. Open VSCode settings (File > Preferences > Settings)
 2. Search for "Whisper Assistant"
 3. Set "Api Provider" to "localhost"
 4. Set "Api Key" to any non-empty string (e.g., "local")
-5. The extension will now use your local Faster Whisper server
 
-### Available Models
+That's it! You can now use the extension with your local Whisper server.
 
-The local server uses the "base" model by default. To use a different model, modify the `server/main.py` file:
+### Docker Configuration Options
 
-```python
-model = WhisperModel("large-v2", device="cpu", compute_type="int8")
-```
+#### Memory Limits
 
-Available models:
-
-- tiny
-- base
-- small
-- medium
-- large-v2
-- large-v3
-
-Note: Larger models require more memory but provide better accuracy.
-
-### Using GPU Acceleration
-
-If you have a CUDA-capable GPU, you can modify the Dockerfile to use the GPU version:
-
-```dockerfile
-FROM python:3.10-slim
-
-# Install CUDA dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    ffmpeg \
-    cuda-toolkit-11-8 \
-    && rm -rf /var/lib/apt/lists/*
-
-# ... rest of Dockerfile ...
-```
-
-Then update the model initialization in `server/main.py`:
-
-```python
-model = WhisperModel("base", device="cuda", compute_type="float16")
-```
-
-Run the container with GPU support:
+If you're experiencing memory issues, you can limit the container's memory:
 
 ```bash
-docker run -d -p 4444:4444 --gpus all --name whisper-assistant whisper-assistant-server
+docker run -d -p 4444:4444 --memory=4g --name whisper-assistant martinopensky/whisper-assistant:latest
+```
+
+#### GPU Support
+
+If you have a CUDA-capable GPU:
+
+```bash
+docker run -d -p 4444:4444 --gpus all --name whisper-assistant martinopensky/whisper-assistant:latest
+```
+
+#### Container Management
+
+```bash
+# Stop the server
+docker stop whisper-assistant
+
+# Start the server
+docker start whisper-assistant
+
+# Remove the container
+docker rm whisper-assistant
+
+# View logs
+docker logs whisper-assistant
+
+# Update to latest version
+docker pull martinopensky/whisper-assistant:latest
+docker stop whisper-assistant
+docker rm whisper-assistant
+docker run -d -p 4444:4444 martinopensky/whisper-assistant:latest
 ```
 
 ### Troubleshooting
@@ -170,13 +149,25 @@ docker run -d -p 4444:4444 --gpus all --name whisper-assistant whisper-assistant
 1. Check if the server is running:
 
    ```bash
-   curl http://localhost:4444/health
+   curl http://localhost:4444/v1/health
    ```
 
-2. View server logs:
+2. Common issues:
+   - **First startup delay**: The model is downloaded on first use, which may take a few minutes
+   - **Memory issues**: Try using the `--memory=4g` flag as shown above
+   - **Port conflicts**: If port 4444 is in use, you can map to a different port:
+     ```bash
+     docker run -d -p 5000:4444 martinopensky/whisper-assistant:latest
+     ```
+     Then update the custom endpoint in VSCode settings to `http://localhost:5000`
 
+### Advanced: Building from Source
+
+If you want to customize the server, you can build from our Dockerfile:
+
+1. Get the Dockerfile from our repository
+2. Build the image:
    ```bash
-   docker logs whisper-assistant
+   docker build -t whisper-assistant-local .
+   docker run -d -p 4444:4444 whisper-assistant-local
    ```
-
-3. If you encounter memory issues, try a smaller model or increase Docker's memory limit.
