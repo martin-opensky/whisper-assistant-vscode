@@ -1,9 +1,5 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
-import SpeechTranscription, {
-  Transcription,
-  WhisperModel,
-} from './speech-transcription';
+import SpeechTranscription, { Transcription } from './speech-transcription';
 import * as fs from 'fs';
 
 interface ExtensionState {
@@ -30,46 +26,77 @@ export const state: ExtensionState = {
 };
 
 export async function activate(context: vscode.ExtensionContext) {
-  // Create output channel
-  const outputChannel = vscode.window.createOutputChannel('Whisper Assistant');
+  try {
+    // Create output channel and show it immediately
+    const outputChannel =
+      vscode.window.createOutputChannel('Whisper Assistant');
+    outputChannel.show(true); // Force show the output channel
+    outputChannel.appendLine('Activating Whisper Assistant...');
+    state.outputChannel = outputChannel;
 
-  // Get the storage path for the extension
-  const storagePath = context.globalStorageUri.fsPath;
+    // Get the storage path for the extension
+    const storagePath = context.globalStorageUri.fsPath;
+    outputChannel.appendLine(`Storage path: ${storagePath}`);
 
-  // Ensure storage directory exists
-  if (!fs.existsSync(storagePath)) {
-    fs.mkdirSync(storagePath, { recursive: true });
-  }
+    // Ensure storage directory exists
+    if (!fs.existsSync(storagePath)) {
+      fs.mkdirSync(storagePath, { recursive: true });
+      outputChannel.appendLine('Created storage directory');
+    }
 
-  // Initialize SpeechTranscription with the storage path
-  state.speechTranscription = new SpeechTranscription(
-    storagePath,
-    outputChannel,
-  );
-
-  // Check if Sox is installed (we still need this for recording)
-  const isSoxInstalled = await state.speechTranscription?.checkIfInstalled(
-    'sox',
-  );
-
-  if (!isSoxInstalled) {
-    vscode.window.showErrorMessage(
-      'SoX is not installed. Please install Sox for this extension to work properly.',
+    // Initialize SpeechTranscription with the storage path
+    state.speechTranscription = new SpeechTranscription(
+      storagePath,
+      outputChannel,
     );
+    outputChannel.appendLine('Initialized SpeechTranscription');
+
+    // Check if Sox is installed (we still need this for recording)
+    const isSoxInstalled = await state.speechTranscription?.checkIfInstalled(
+      'sox',
+    );
+    outputChannel.appendLine(
+      `Sox installation status: ${
+        isSoxInstalled ? 'installed' : 'not installed'
+      }`,
+    );
+
+    if (!isSoxInstalled) {
+      const message =
+        'SoX is not installed. Please install Sox for this extension to work properly.';
+      vscode.window.showErrorMessage(message);
+      outputChannel.appendLine(message);
+    }
+
+    // Initialize the extension regardless of Sox installation
+    registerCommands(context);
+    outputChannel.appendLine('Registered commands');
+
+    initializeStatusBarItem();
+    outputChannel.appendLine('Initialized status bar item');
+
+    updateStatusBarItem();
+    outputChannel.appendLine('Updated status bar item');
+
+    if (state.myStatusBarItem !== undefined) {
+      context.subscriptions.push(state.myStatusBarItem);
+      outputChannel.appendLine('Added status bar item to subscriptions');
+    }
+
+    outputChannel.appendLine('Extension activated successfully!');
+    outputChannel.show();
+  } catch (error) {
+    const errorMessage = `Error activating extension: ${error}`;
+    console.error(errorMessage);
+    // Create a new output channel if one doesn't exist
+    if (!state.outputChannel) {
+      state.outputChannel =
+        vscode.window.createOutputChannel('Whisper Assistant');
+      state.outputChannel.show(true);
+    }
+    state.outputChannel.appendLine(errorMessage);
+    state.outputChannel.show(true);
   }
-
-  // Initialize the extension regardless of Sox installation
-  registerCommands(context);
-  initializeStatusBarItem();
-  updateStatusBarItem();
-
-  if (state.myStatusBarItem !== undefined) {
-    context.subscriptions.push(state.myStatusBarItem);
-  }
-
-  console.log(
-    'Congratulations, your extension "Whisper Assistant" is now active!',
-  );
 }
 
 export function initializeStatusBarItem(): void {
@@ -103,18 +130,29 @@ function registerCommands(context: vscode.ExtensionContext): void {
 }
 
 export async function toggleRecordingCommand(): Promise<void> {
+  if (!state.outputChannel) {
+    state.outputChannel =
+      vscode.window.createOutputChannel('Whisper Assistant');
+    state.outputChannel.show(true);
+  }
+  state.outputChannel.appendLine('Toggle recording command triggered');
+
   if (state.speechTranscription !== undefined && !state.isTranscribing) {
     if (!state.isRecording) {
+      state.outputChannel.appendLine('Starting recording...');
       state.speechTranscription.startRecording();
       state.recordingStartTime = Date.now();
       state.isRecording = true;
       updateStatusBarItem();
+      state.outputChannel.appendLine('Recording started');
 
       setInterval(updateStatusBarItem, 1000);
     } else {
+      state.outputChannel.appendLine('Stopping recording...');
       await state.speechTranscription.stopRecording();
       state.isTranscribing = true;
       state.isRecording = false;
+      state.outputChannel.appendLine('Recording stopped');
 
       updateStatusBarItem();
 
@@ -124,6 +162,7 @@ export async function toggleRecordingCommand(): Promise<void> {
       const message = `Transcribing using ${
         provider.charAt(0).toUpperCase() + provider.slice(1)
       } API`;
+      state.outputChannel.appendLine(message);
 
       const progressOptions = {
         location: vscode.ProgressLocation.Notification,

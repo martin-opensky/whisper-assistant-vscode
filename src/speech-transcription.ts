@@ -41,7 +41,7 @@ const PROVIDER_MODELS: Record<ApiProvider, WhisperModel> = {
 class SpeechTranscription {
   private fileName: string = 'recording';
   private recordingProcess: ChildProcess | null = null;
-  private openai: OpenAI;
+  private openai: OpenAI | undefined;
   private tempDir: string;
 
   constructor(
@@ -147,6 +147,10 @@ class SpeechTranscription {
       this.outputChannel.appendLine(
         `Whisper Assistant: Using model ${model} for ${provider}`,
       );
+
+      if (!this.openai) {
+        throw new Error('OpenAI client not initialized');
+      }
 
       const transcription = await this.openai.audio.transcriptions.create({
         file: audioFile,
