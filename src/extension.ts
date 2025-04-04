@@ -158,7 +158,7 @@ export async function toggleRecordingCommand(): Promise<void> {
 
       // Get the current API provider
       const config = vscode.workspace.getConfiguration('whisper-assistant');
-      const provider = config.get<string>('apiProvider') || 'openai';
+      const provider = config.get<string>('apiProvider') || 'localhost';
       const message = `Transcribing using ${
         provider.charAt(0).toUpperCase() + provider.slice(1)
       } API`;
@@ -236,8 +236,8 @@ function updateStatusBarItem(): void {
     }`;
   } else {
     state.myStatusBarItem.text = state.isTranscribing
-      ? `$(loading~spin)`
-      : `$(quote)`;
+      ? `$(loading~spin) Whisper`
+      : `$(quote) Whisper`;
   }
 }
 

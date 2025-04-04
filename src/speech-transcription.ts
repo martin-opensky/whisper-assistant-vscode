@@ -25,7 +25,7 @@ export interface Transcription {
 
 export type WhisperModel = 'whisper-1' | 'whisper-large-v3-turbo';
 
-type ApiProvider = 'localhost' | 'openai' | 'groq';
+type ApiProvider = 'localhost' | 'groq';
 
 interface ApiConfig {
   baseURL: string;
@@ -33,7 +33,7 @@ interface ApiConfig {
 }
 
 const PROVIDER_MODELS: Record<ApiProvider, WhisperModel> = {
-  openai: 'whisper-1',
+  // openai: 'whisper-1',
   groq: 'whisper-large-v3-turbo',
   localhost: 'whisper-1', // default to OpenAI model for localhost
 };
@@ -56,7 +56,7 @@ class SpeechTranscription {
 
   private getApiConfig(): ApiConfig {
     const config = vscode.workspace.getConfiguration('whisper-assistant');
-    const provider = config.get<ApiProvider>('apiProvider') || 'openai';
+    const provider = config.get<ApiProvider>('apiProvider') || 'localhost';
 
     const apiKey = config.get<string>('apiKey');
     if (!apiKey) {
@@ -66,7 +66,7 @@ class SpeechTranscription {
     const baseURLs: Record<ApiProvider, string> = {
       localhost:
         (config.get('customEndpoint') || 'http://localhost:4444') + '/v1',
-      openai: 'https://api.openai.com/v1',
+      // openai: 'https://api.openai.com/v1',
       groq: 'https://api.groq.com/openai/v1',
     };
 
@@ -127,7 +127,7 @@ class SpeechTranscription {
 
   async transcribeRecording(): Promise<Transcription | undefined> {
     const config = vscode.workspace.getConfiguration('whisper-assistant');
-    const provider = config.get<ApiProvider>('apiProvider') || 'openai';
+    const provider = config.get<ApiProvider>('apiProvider') || 'localhost';
 
     const apiConfig = this.getApiConfig();
 
