@@ -171,3 +171,23 @@ If you want to customize the server, you can build from our Dockerfile:
    docker build -t whisper-assistant-local .
    docker run -d -p 4444:4444 whisper-assistant-local
    ```
+
+# Multiple API Options
+
+Whisper Assistant offers three ways to transcribe your audio:
+
+1. **Local Docker Server** (Default): Run Whisper locally using our Docker container for privacy and no remote API costs
+2. **Groq Cloud API**: A powerful cloud option using Groq's Whisper Large v3 Turbo model for fast, accurate transcription (requires API key)
+
+## Configuring the API Provider
+
+1. Open VSCode settings (File > Preferences > Settings)
+2. Search for "Whisper Assistant"
+3. Set "Api Provider" to one of:
+   - `localhost` (default)
+   - `groq`
+4. Enter your API key:
+   - For localhost: Any non-empty string (e.g., "local")
+   - For Groq: Get your key from [GROQ's console](https://console.groq.com)
+
+When using localhost (default), you can customize the endpoint URL in settings if you're running the Docker container on a different port or host.

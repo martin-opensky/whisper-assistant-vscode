@@ -41,16 +41,12 @@ const PROVIDER_MODELS: Record<ApiProvider, WhisperModel> = {
 class SpeechTranscription {
   private fileName: string = 'recording';
   private recordingProcess: ChildProcess | null = null;
-  private openai: OpenAI | undefined;
   private tempDir: string;
 
   constructor(
     private storagePath: string,
     private outputChannel: vscode.OutputChannel,
   ) {
-    const config = this.getApiConfig();
-    this.openai = new OpenAI(config);
-
     // Create a temp directory within the storage path
     this.tempDir = path.join(this.storagePath, 'temp');
     if (!fs.existsSync(this.tempDir)) {
@@ -130,10 +126,12 @@ class SpeechTranscription {
   }
 
   async transcribeRecording(): Promise<Transcription | undefined> {
-    try {
-      const config = vscode.workspace.getConfiguration('whisper-assistant');
-      const provider = config.get<ApiProvider>('apiProvider') || 'openai';
+    const config = vscode.workspace.getConfiguration('whisper-assistant');
+    const provider = config.get<ApiProvider>('apiProvider') || 'openai';
 
+    const apiConfig = this.getApiConfig();
+
+    try {
       this.outputChannel.appendLine(
         `Whisper Assistant: Transcribing recording using ${provider} API`,
       );
@@ -148,11 +146,13 @@ class SpeechTranscription {
         `Whisper Assistant: Using model ${model} for ${provider}`,
       );
 
-      if (!this.openai) {
+      const openai = new OpenAI(apiConfig);
+
+      if (!openai) {
         throw new Error('OpenAI client not initialized');
       }
 
-      const transcription = await this.openai.audio.transcriptions.create({
+      const transcription = await openai.audio.transcriptions.create({
         file: audioFile,
         model: model,
         language: 'en',
@@ -193,19 +193,23 @@ class SpeechTranscription {
       return result;
     } catch (error) {
       // Log the error to output channel
-      this.outputChannel.appendLine(`Whisper Assistant: error: ${error}`);
+      this.outputChannel.appendLine(
+        `Whisper Assistant: error: ${error} (apiConfig.baseURL: ${apiConfig.baseURL})`,
+      );
 
-      // Show error message to user
-      let errorMessage = 'An error occurred during transcription.';
-
-      if (error instanceof Error) {
+      if (provider === 'localhost') {
+        vscode.window.showErrorMessage(
+          'Whisper Assistant: Ensure local Whisper server is running.',
+        );
+      } else if (error instanceof Error) {
         // Format the error message to be more user-friendly
-        errorMessage = error.message
+        const errorMessage = error.message
           .replace(/\bError\b/i, '') // Remove redundant "Error" word
           .trim();
+
+        vscode.window.showErrorMessage(`Whisper Assistant: ${errorMessage}`);
       }
 
-      vscode.window.showErrorMessage(`Whisper Assistant: ${errorMessage}`);
       return undefined;
     }
   }
