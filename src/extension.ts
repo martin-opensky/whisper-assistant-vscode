@@ -237,7 +237,7 @@ function updateStatusBarItem(): void {
   } else {
     state.myStatusBarItem.text = state.isTranscribing
       ? `$(loading~spin) Whisper`
-      : `$(quote) Whisper`;
+      : `$(mic) Whisper`;
   }
 }
 

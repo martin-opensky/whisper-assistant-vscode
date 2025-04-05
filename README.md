@@ -4,15 +4,15 @@
 
 # Whisper Assistant: Your Voice-Driven Coding Companion
 
-Whisper Assistant is an extension for Visual Studio Code that transcribes your spoken words into text within the VSCode editor. This hands-free approach to coding allows you to focus on your ideas instead of your typing.
+Whisper Assistant is an extension for Visual Studio Code that transcribes your spoken words into text within the VSCode & Cursor editor. This hands-free approach to coding allows you to focus on your ideas instead of your typing.
 
-Whisper Assistant can also be integrated with other powerful AI tools, such as Chat GPT-4 or the [Cursor.so application](https://www.cursor.so/), to create a dynamic, AI-driven development environment.
+Whisper Assistant can also be integrated with other powerful AI tools, such as Chat GPT-4 or [Cursor](https://www.cursor.so/), to create a dynamic, AI-driven development environment.
 
 # Powered by OpenAI Whisper
 
-Whisper Assistant utilizes the Whisper AI locally, offering a free voice transcription service.
+By default, Whisper Assistant utilizes Whisper AI on your _local machine_, offering a free voice transcription service. For this, the base model of Whisper is used, balancing accuracy and performance. **In the future, we will support other models.**
 
-By default, the base model of Whisper AI is used, balancing accuracy and performance. You can select a different model in the extension settings, but remember to download your chosen model before using Whisper Assistant. **Failure to download the selected model can lead to errors.** The base model is recommended and set as default.
+There is also the option to use the OpenAI API or Groq API to transcribe your audio for remote transcription. **Note: This requires an API key.**
 
 For more details about Whisper, visit the [Whisper OpenAI GitHub page](https://github.com/openai/whisper).
 
@@ -35,11 +35,10 @@ To install and setup Whisper Assistant, follow these steps:
       sudo apt install sox
       ```
 
-2.  Install Whisper locally. This requires the following prerequisites:
-    - Install [Python 3](https://www.python.org/downloads/)
-    - Install [PIP](https://pip.pypa.io/en/stable/installation/)
-    - Follow the instructions on the [Whisper OpenAI GitHub page](https://github.com/openai/whisper) to complete the Whisper installation.
-3.  Install the Whisper Assistant extension into Visual Studio Code or the Cursor.so application.
+2.  Install Docker to enable the local Whisper model or use the OpenAI API or Groq API for remote transcription.
+    - If using local transcription, follow the instructions in the [Local Development with Faster Whisper](#local-development-with-faster-whisper) section.
+    - If using remote transcription, follow the instructions in the [Multiple API Options](#multiple-api-options) section.
+3.  Install the Whisper Assistant extension into Visual Studio Code or Cursor.
 
 # How to Use Whisper Assistant
 
@@ -47,7 +46,7 @@ To install and setup Whisper Assistant, follow these steps:
 
 Once initialization is complete, a quote icon will appear in the bottom right status bar.
 
-  <img src="https://raw.githubusercontent.com/martin-opensky/whisper-assistant-vscode/main/images/quote.png" alt="Quote icon" style="width: 144px; height: auto; ">
+  <img src="https://raw.githubusercontent.com/martin-opensky/whisper-assistant-vscode/main/images/microphone.png" alt="Whisper Assistant icon" style="width: 144px; height: auto; ">
 
 2. **Starting the Recording**: Activate the extension by clicking on the quote icon or using the shortcut `Command+M` (for Mac) or `Control+M` (for Windows). You can record for as long as you like, but remember, the longer the recording, the longer the transcription process. The recording time will be displayed in the status bar.
 
@@ -85,11 +84,11 @@ Please note that this extension has been primarily tested on Mac OS. While effor
 
 ## Local Development with Faster Whisper
 
-This extension supports using a local Faster Whisper model through Docker. This provides faster transcription and doesn't require an API key.
+This extension supports using a local Faster Whisper model through Docker. This provides fast transcription locally and doesn't require an API key.
 
 ### Quick Start with Docker
 
-The fastest way to get started is using our pre-built Docker image:
+To get started with local transcription, use our Docker image:
 
 ```bash
 docker run -d -p 4444:4444 --name whisper-assistant martinopensky/whisper-assistant:latest
@@ -100,7 +99,7 @@ Then configure VSCode:
 1. Open VSCode settings (File > Preferences > Settings)
 2. Search for "Whisper Assistant"
 3. Set "Api Provider" to "localhost"
-4. Set "Api Key" to any non-empty string (e.g., "local")
+4. Set "Api Key" to any non-empty string (e.g., "localhost-dummy-key")
 
 That's it! You can now use the extension with your local Whisper server.
 
@@ -177,7 +176,8 @@ If you want to customize the server, you can build from our Dockerfile:
 Whisper Assistant offers three ways to transcribe your audio:
 
 1. **Local Docker Server** (Default): Run Whisper locally using our Docker container for privacy and no remote API costs
-2. **Groq Cloud API**: A powerful cloud option using Groq's Whisper Large v3 Turbo model for fast, accurate transcription (requires API key)
+2. **OpenAI Cloud API**: A powerful cloud option using OpenAI's Whisper-1 model for fast, accurate transcription (requires API key)
+3. **Groq Cloud API**: A powerful cloud option using Groq's Whisper Large v3 Turbo model for fast, accurate transcription (requires API key)
 
 ## Configuring the API Provider
 
@@ -185,9 +185,11 @@ Whisper Assistant offers three ways to transcribe your audio:
 2. Search for "Whisper Assistant"
 3. Set "Api Provider" to one of:
    - `localhost` (default)
+   - `openai`
    - `groq`
 4. Enter your API key:
-   - For localhost: Any non-empty string (e.g., "local")
+   - For localhost: Any non-empty string (e.g., "localhost-dummy-key")
+   - For OpenAI: Get your key from [OpenAI's console](https://platform.openai.com/api-keys)
    - For Groq: Get your key from [GROQ's console](https://console.groq.com)
 
 When using localhost (default), you can customize the endpoint URL in settings if you're running the Docker container on a different port or host.

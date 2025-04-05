@@ -25,7 +25,7 @@ export interface Transcription {
 
 export type WhisperModel = 'whisper-1' | 'whisper-large-v3-turbo';
 
-type ApiProvider = 'localhost' | 'groq';
+type ApiProvider = 'localhost' | 'openai' | 'groq';
 
 interface ApiConfig {
   baseURL: string;
@@ -33,7 +33,7 @@ interface ApiConfig {
 }
 
 const PROVIDER_MODELS: Record<ApiProvider, WhisperModel> = {
-  // openai: 'whisper-1',
+  openai: 'whisper-1',
   groq: 'whisper-large-v3-turbo',
   localhost: 'whisper-1', // default to OpenAI model for localhost
 };
@@ -66,7 +66,7 @@ class SpeechTranscription {
     const baseURLs: Record<ApiProvider, string> = {
       localhost:
         (config.get('customEndpoint') || 'http://localhost:4444') + '/v1',
-      // openai: 'https://api.openai.com/v1',
+      openai: 'https://api.openai.com/v1',
       groq: 'https://api.groq.com/openai/v1',
     };
 
