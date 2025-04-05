@@ -20,11 +20,21 @@ RUN python -c "from faster_whisper import WhisperModel; WhisperModel('base', dev
 
 # Create main.py with embedded code
 RUN echo 'from fastapi import FastAPI, UploadFile, File\n\
+from fastapi.middleware.cors import CORSMiddleware\n\
 from faster_whisper import WhisperModel\n\
 import tempfile\n\
 import os\n\
 \n\
 app = FastAPI(title="Whisper Assistant API")\n\
+\n\
+# Configure CORS\n\
+app.add_middleware(\n\
+    CORSMiddleware,\n\
+    allow_origins=["*"],  # Allows all origins\n\
+    allow_credentials=True,\n\
+    allow_methods=["*"],  # Allows all methods\n\
+    allow_headers=["*"],  # Allows all headers\n\
+)\n\
 \n\
 # Initialize the model (already downloaded during build)\n\
 whisper_model = WhisperModel("base", device="cpu", compute_type="int8")\n\
