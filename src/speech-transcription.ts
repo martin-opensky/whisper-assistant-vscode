@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { exec, ChildProcess } from 'child_process';
+import { exec, ChildProcess, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
@@ -92,22 +92,48 @@ class SpeechTranscription {
   startRecording(): void {
     try {
       const outputPath = path.join(this.tempDir, `${this.fileName}.wav`);
-      this.recordingProcess = exec(
-        `sox -d -b 16 -e signed -c 1 -r 16k "${outputPath}"`,
-        (error, stdout, stderr) => {
-          if (error) {
-            this.outputChannel.appendLine(`Whisper Assistant: error: ${error}`);
-            return;
-          }
-          if (stderr) {
+      this.recordingProcess = spawn('sox', [
+        '-d',
+        '-b',
+        '16',
+        '-e',
+        'signed',
+        '-c',
+        '1',
+        '-r',
+        '16k',
+        outputPath,
+      ]);
+
+      if (this.recordingProcess) {
+        // Only show initial SoX configuration
+        let initialConfigShown = false;
+
+        this.recordingProcess.stderr?.on('data', (data) => {
+          const message = data.toString();
+          // Only show the initial configuration message
+          if (!initialConfigShown && message.includes('Input File')) {
             this.outputChannel.appendLine(
-              `Whisper Assistant: SoX process has been killed: ${stderr}`,
+              `Whisper Assistant: SoX Configuration: ${message.trim()}`,
             );
-            return;
+            initialConfigShown = true;
           }
-          this.outputChannel.appendLine(`Whisper Assistant: stdout: ${stdout}`);
-        },
-      );
+        });
+
+        this.recordingProcess.stdout?.on('data', (data) => {
+          this.outputChannel.appendLine(
+            `Whisper Assistant: SoX stdout: ${data}`,
+          );
+        });
+
+        this.recordingProcess.on('close', (code) => {
+          if (code !== 0) {
+            this.outputChannel.appendLine(
+              `Whisper Assistant: SoX process exited with code ${code}`,
+            );
+          }
+        });
+      }
     } catch (error) {
       this.outputChannel.appendLine(`Whisper Assistant: error: ${error}`);
     }
@@ -120,8 +146,9 @@ class SpeechTranscription {
       );
       return;
     }
+
     this.outputChannel.appendLine('Whisper Assistant: Stopping recording');
-    this.recordingProcess.kill();
+    this.recordingProcess.kill('SIGTERM');
     this.recordingProcess = null;
   }
 
