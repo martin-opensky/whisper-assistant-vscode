@@ -1,0 +1,22 @@
+docker_build() {
+    docker build -t whisper-assistant-server:1.1.0 .
+}
+
+docker_run() {
+    docker run -d --restart always -p 4444:4444 --name whisper-assistant whisper-assistant-server:1.1.0
+}
+
+# to publish the extension locally, build the npm package then
+# /Users/nilleb/.cursor/extensions/martinopensky.whisper-assistant-1.1.6/out/
+
+case "$1" in
+    docker-build)
+        docker_build
+        ;;
+    docker-run)
+        docker_run
+        ;;
+    *)
+        echo "Error: Invalid command. Available commands: docker-build, docker-run"
+        ;;
+esac

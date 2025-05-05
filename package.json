@@ -70,7 +70,8 @@
     "test": "node ./out/test/runTest.js",
     "package": "vsce package",
     "publish": "vsce package && vsce publish",
-    "clean": "rm -rf out .vscode-test"
+    "clean": "rm -rf out .vscode-test",
+    "deploy": "rsync -av --existing \"$(pwd)/\" \"$HOME/.cursor/extensions/martinopensky.whisper-assistant-${npm_package_version}/\""
   },
   "devDependencies": {
     "@types/mocha": "^10.0.1",
