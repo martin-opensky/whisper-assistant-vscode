@@ -102,8 +102,6 @@ class SpeechTranscription {
         '1',
         '-r',
         '16k',
-        '--buffer',
-        '2048',
         outputPath,
       ]);
 
@@ -179,9 +177,6 @@ class SpeechTranscription {
     }
 
     this.recordingProcess = null;
-
-    // Post-process the recording to add padding and fix any cutoff issues
-    await this.postProcessRecording();
   }
 
   async transcribeRecording(): Promise<Transcription | undefined> {
@@ -270,40 +265,6 @@ class SpeechTranscription {
       }
 
       return undefined;
-    }
-  }
-
-  private async postProcessRecording(): Promise<void> {
-    try {
-      const originalPath = path.join(this.tempDir, `${this.fileName}.wav`);
-      const tempPath = path.join(this.tempDir, `${this.fileName}_temp.wav`);
-
-      // Check if the original file exists
-      if (!fs.existsSync(originalPath)) {
-        this.outputChannel.appendLine(
-          'Whisper Assistant: No recording file found to post-process',
-        );
-        return;
-      }
-
-      this.outputChannel.appendLine(
-        'Whisper Assistant: Post-processing recording to fix cutoff issues',
-      );
-
-      // Add 2 seconds of silence to compensate for cutoff
-      // Use sox to add padding to the existing file
-      await execAsync(`sox "${originalPath}" "${tempPath}" pad 0 2`);
-
-      // Replace original with padded version
-      fs.renameSync(tempPath, originalPath);
-
-      this.outputChannel.appendLine(
-        'Whisper Assistant: Recording post-processing completed',
-      );
-    } catch (error) {
-      this.outputChannel.appendLine(
-        `Whisper Assistant: Error post-processing recording: ${error}`,
-      );
     }
   }
 
