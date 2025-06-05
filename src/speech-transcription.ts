@@ -102,7 +102,12 @@ class SpeechTranscription {
         '1',
         '-r',
         '16k',
+        '--buffer',
+        '2048',
         outputPath,
+        'pad',
+        '0',
+        '2',
       ]);
 
       if (this.recordingProcess) {
@@ -147,8 +152,35 @@ class SpeechTranscription {
       return;
     }
 
-    this.outputChannel.appendLine('Whisper Assistant: Stopping recording');
-    this.recordingProcess.kill('SIGTERM');
+    this.outputChannel.appendLine(
+      'Whisper Assistant: Stopping recording gracefully',
+    );
+
+    // Try graceful shutdown first with SIGINT (Ctrl+C equivalent)
+    this.recordingProcess.kill('SIGINT');
+
+    // Wait for graceful shutdown
+    const gracefulShutdown = new Promise<void>((resolve) => {
+      const timeout = setTimeout(() => {
+        resolve();
+      }, 2000); // 2 second timeout
+
+      this.recordingProcess!.on('exit', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+    });
+
+    await gracefulShutdown;
+
+    // If process is still running, force kill it
+    if (this.recordingProcess && !this.recordingProcess.killed) {
+      this.outputChannel.appendLine(
+        'Whisper Assistant: Force stopping recording process',
+      );
+      this.recordingProcess.kill('SIGKILL');
+    }
+
     this.recordingProcess = null;
   }
 
