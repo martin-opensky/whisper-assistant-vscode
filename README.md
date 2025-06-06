@@ -30,6 +30,10 @@ To install and setup Whisper Assistant, follow these steps:
       ```
       choco install sox.portable
       ```
+      **Note for Windows Users:** Some users have reported issues with newer SoX versions not recognizing the default audio device. If you encounter this, installing version 14.4.1 specifically might resolve the problem. You can install it using Chocolatey with the following command:
+      ```
+      choco install sox.portable --version=14.4.1
+      ```
     - Ubuntu: Run the following command in your terminal:
       ```
       sudo apt install sox

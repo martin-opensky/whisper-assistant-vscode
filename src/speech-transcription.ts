@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { exec, ChildProcess } from 'child_process';
+import { exec, ChildProcess, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
@@ -92,22 +92,50 @@ class SpeechTranscription {
   startRecording(): void {
     try {
       const outputPath = path.join(this.tempDir, `${this.fileName}.wav`);
-      this.recordingProcess = exec(
-        `sox -d -b 16 -e signed -c 1 -r 16k "${outputPath}"`,
-        (error, stdout, stderr) => {
-          if (error) {
-            this.outputChannel.appendLine(`Whisper Assistant: error: ${error}`);
-            return;
-          }
-          if (stderr) {
+      this.recordingProcess = spawn('sox', [
+        '-d',
+        '-b',
+        '16',
+        '-e',
+        'signed',
+        '-c',
+        '1',
+        '-r',
+        '16k',
+        '--buffer',
+        '2048',
+        outputPath,
+      ]);
+
+      if (this.recordingProcess) {
+        // Only show initial SoX configuration
+        let initialConfigShown = false;
+
+        this.recordingProcess.stderr?.on('data', (data) => {
+          const message = data.toString();
+          // Only show the initial configuration message
+          if (!initialConfigShown && message.includes('Input File')) {
             this.outputChannel.appendLine(
-              `Whisper Assistant: SoX process has been killed: ${stderr}`,
+              `Whisper Assistant: SoX Configuration: ${message.trim()}`,
             );
-            return;
+            initialConfigShown = true;
           }
-          this.outputChannel.appendLine(`Whisper Assistant: stdout: ${stdout}`);
-        },
-      );
+        });
+
+        this.recordingProcess.stdout?.on('data', (data) => {
+          this.outputChannel.appendLine(
+            `Whisper Assistant: SoX stdout: ${data}`,
+          );
+        });
+
+        this.recordingProcess.on('close', (code) => {
+          if (code !== 0) {
+            this.outputChannel.appendLine(
+              `Whisper Assistant: SoX process exited with code ${code}`,
+            );
+          }
+        });
+      }
     } catch (error) {
       this.outputChannel.appendLine(`Whisper Assistant: error: ${error}`);
     }
@@ -120,9 +148,40 @@ class SpeechTranscription {
       );
       return;
     }
-    this.outputChannel.appendLine('Whisper Assistant: Stopping recording');
-    this.recordingProcess.kill();
+
+    this.outputChannel.appendLine(
+      'Whisper Assistant: Stopping recording gracefully',
+    );
+
+    // Try graceful shutdown first with SIGINT (Ctrl+C equivalent)
+    this.recordingProcess.kill('SIGINT');
+
+    // Wait for graceful shutdown
+    const gracefulShutdown = new Promise<void>((resolve) => {
+      const timeout = setTimeout(() => {
+        resolve();
+      }, 2000); // 2 second timeout
+
+      this.recordingProcess!.on('exit', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+    });
+
+    await gracefulShutdown;
+
+    // If process is still running, force kill it
+    if (this.recordingProcess && !this.recordingProcess.killed) {
+      this.outputChannel.appendLine(
+        'Whisper Assistant: Force stopping recording process',
+      );
+      this.recordingProcess.kill('SIGKILL');
+    }
+
     this.recordingProcess = null;
+
+    // Post-process the recording to add padding and fix any cutoff issues
+    await this.postProcessRecording();
   }
 
   async transcribeRecording(): Promise<Transcription | undefined> {
@@ -211,6 +270,40 @@ class SpeechTranscription {
       }
 
       return undefined;
+    }
+  }
+
+  private async postProcessRecording(): Promise<void> {
+    try {
+      const originalPath = path.join(this.tempDir, `${this.fileName}.wav`);
+      const tempPath = path.join(this.tempDir, `${this.fileName}_temp.wav`);
+
+      // Check if the original file exists
+      if (!fs.existsSync(originalPath)) {
+        this.outputChannel.appendLine(
+          'Whisper Assistant: No recording file found to post-process',
+        );
+        return;
+      }
+
+      this.outputChannel.appendLine(
+        'Whisper Assistant: Post-processing recording to fix cutoff issues',
+      );
+
+      // Add 2 seconds of silence to compensate for cutoff
+      // Use sox to add padding to the existing file
+      await execAsync(`sox "${originalPath}" "${tempPath}" pad 0 2`);
+
+      // Replace original with padded version
+      fs.renameSync(tempPath, originalPath);
+
+      this.outputChannel.appendLine(
+        'Whisper Assistant: Recording post-processing completed',
+      );
+    } catch (error) {
+      this.outputChannel.appendLine(
+        `Whisper Assistant: Error post-processing recording: ${error}`,
+      );
     }
   }
 
