@@ -57,6 +57,11 @@
           "type": "string",
           "default": "http://localhost:4444",
           "description": "Custom endpoint URL (localhost only)"
+        },
+        "whisper-assistant.customRecordingCommand": {
+          "type": "string",
+          "default": "",
+          "description": "Custom recording command (must include $AUDIO_FILE placeholder). Leave empty to use sox (default). Examples: macOS: 'ffmpeg -f avfoundation -i :1 -ac 1 -ar 16000 -sample_fmt s16 $AUDIO_FILE', Linux: 'ffmpeg -f pulse -i default -ac 1 -ar 16000 -sample_fmt s16 $AUDIO_FILE', Windows: 'ffmpeg -f dshow -i audio=\"Microphone\" -ac 1 -ar 16000 -sample_fmt s16 $AUDIO_FILE'"
         }
       }
     }
