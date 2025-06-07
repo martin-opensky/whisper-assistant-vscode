@@ -12,6 +12,7 @@ interface ExtensionState {
   recordingStartTime: number | undefined;
   outputChannel?: vscode.OutputChannel;
   recordingProcess: any;
+  recordingTimerInterval: NodeJS.Timeout | undefined;
 }
 
 export const state: ExtensionState = {
@@ -23,6 +24,7 @@ export const state: ExtensionState = {
   outputDir: undefined,
   recordingStartTime: undefined,
   recordingProcess: null,
+  recordingTimerInterval: undefined,
 };
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -135,8 +137,19 @@ export async function toggleRecordingCommand(): Promise<void> {
   }
   state.outputChannel.appendLine('Toggle recording command triggered');
 
-  if (state.speechTranscription !== undefined && !state.isTranscribing) {
-    if (!state.isRecording) {
+  // Prevent action during transcription
+  if (state.isTranscribing) {
+    state.outputChannel.appendLine(
+      'Cannot start recording: transcription in progress',
+    );
+    vscode.window.showInformationMessage(
+      'Whisper Assistant: Please wait for transcription to complete before starting a new recording.',
+    );
+    return;
+  }
+
+  if (state.speechTranscription !== undefined) {
+    if (!state.isRecording && !state.isTranscribing) {
       state.outputChannel.appendLine('Starting recording...');
       const recordingStarted = state.speechTranscription.startRecording();
 
@@ -146,12 +159,23 @@ export async function toggleRecordingCommand(): Promise<void> {
         updateStatusBarItem();
         state.outputChannel.appendLine('Recording started');
 
-        setInterval(updateStatusBarItem, 1000);
+        // Clear any existing timer before starting a new one
+        if (state.recordingTimerInterval) {
+          clearInterval(state.recordingTimerInterval);
+        }
+        state.recordingTimerInterval = setInterval(updateStatusBarItem, 1000);
       } else {
         state.outputChannel.appendLine('Failed to start recording');
       }
-    } else {
+    } else if (state.isRecording) {
       state.outputChannel.appendLine('Stopping recording...');
+
+      // Clear the recording timer
+      if (state.recordingTimerInterval) {
+        clearInterval(state.recordingTimerInterval);
+        state.recordingTimerInterval = undefined;
+      }
+
       await state.speechTranscription.stopRecording();
       state.isTranscribing = true;
       state.isRecording = false;
@@ -217,7 +241,8 @@ export async function toggleRecordingCommand(): Promise<void> {
         }
         state.isTranscribing = false;
         state.recordingStartTime = undefined;
-        updateStatusBarItem();
+        // Small delay to ensure UI consistency
+        setTimeout(() => updateStatusBarItem(), 100);
       }
     }
   }
@@ -227,6 +252,11 @@ function updateStatusBarItem(): void {
   if (state.myStatusBarItem === undefined) {
     return;
   }
+
+  // Debug logging
+  state.outputChannel?.appendLine(
+    `UI update: isRecording=${state.isRecording}, isTranscribing=${state.isTranscribing}, recordingStartTime=${state.recordingStartTime}`,
+  );
 
   if (state.isRecording && state.recordingStartTime !== undefined) {
     const recordingDuration = Math.floor(
@@ -287,14 +317,18 @@ async function finalizeProgress(
     message: 'Text has been saved to the clipboard.',
   });
 
-  state.isTranscribing = false;
-  state.recordingStartTime = undefined;
-  updateStatusBarItem();
-  await new Promise<void>((resolve) => setTimeout(resolve, 2500));
+  // Don't reset state here - it's handled in the finally block to prevent race conditions
+  await new Promise<void>((resolve) => setTimeout(resolve, 500));
 }
 
 // This method is called when your extension is deactivated
 export function deactivate() {
+  // Clear any running timers
+  if (state.recordingTimerInterval) {
+    clearInterval(state.recordingTimerInterval);
+    state.recordingTimerInterval = undefined;
+  }
+
   // Dispose the status bar item
   if (state.myStatusBarItem) {
     state.myStatusBarItem.dispose();
