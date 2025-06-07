@@ -27,10 +27,9 @@ export const state: ExtensionState = {
 
 export async function activate(context: vscode.ExtensionContext) {
   try {
-    // Create output channel and show it immediately
+    // Create output channel
     const outputChannel =
       vscode.window.createOutputChannel('Whisper Assistant');
-    outputChannel.show(true); // Force show the output channel
     outputChannel.appendLine('Activating Whisper Assistant...');
     state.outputChannel = outputChannel;
 
@@ -84,7 +83,6 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     outputChannel.appendLine('Extension activated successfully!');
-    outputChannel.show();
   } catch (error) {
     const errorMessage = `Error activating extension: ${error}`;
     console.error(errorMessage);
