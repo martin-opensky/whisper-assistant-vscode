@@ -2,7 +2,7 @@
   "name": "whisper-assistant",
   "displayName": "Whisper Assistant",
   "description": "Leveraging OpenAI's Whisper to transcribe your speech, enhancing your coding efficiency and experience.",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "publisher": "MartinOpenSky",
   "icon": "images/whisper-assistant.png",
   "repository": {
@@ -57,6 +57,11 @@
           "type": "string",
           "default": "http://localhost:4444",
           "description": "Custom endpoint URL (localhost only)"
+        },
+        "whisper-assistant.customRecordingCommand": {
+          "type": "string",
+          "default": "",
+          "description": "Custom recording command (must include $AUDIO_FILE placeholder). Leave empty to use sox (default). Example for macOS: 'ffmpeg -f avfoundation -i :1 -ac 1 -ar 16000 -sample_fmt s16 $AUDIO_FILE'"
         }
       }
     }

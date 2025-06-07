@@ -6,6 +6,13 @@
 
 Whisper Assistant is an extension for Visual Studio Code that transcribes your spoken words into text within the VSCode & Cursor editor. This hands-free approach to coding allows you to focus on your ideas instead of your typing.
 
+✨ **Features:**
+
+- Cross-platform audio recording with SoX (default) or custom recording commands
+- Multiple API options: Local Docker, OpenAI, or Groq
+- Configurable recording tools (ffmpeg, arecord, etc.) for advanced users
+- Optimized for integration with AI coding assistants like Cursor
+
 Whisper Assistant can also be integrated with other powerful AI tools, such as Chat GPT-4 or [Cursor](https://www.cursor.so/), to create a dynamic, AI-driven development environment.
 
 # Powered by OpenAI Whisper
@@ -20,24 +27,46 @@ For more details about Whisper, visit the [Whisper OpenAI GitHub page](https://g
 
 To install and setup Whisper Assistant, follow these steps:
 
-1.  Install SoX to enable easy microphone recording through the command line.
+1.  **Install a recording tool**: Whisper Assistant uses SoX by default for microphone recording, but you can also configure a custom recording command using alternatives like ffmpeg.
 
-    - MacOS: Using the Homebrew package manager, run the following command in your terminal:
-      ```
+    ### Option A: SoX (Default - Recommended)
+
+    - **MacOS**: Using the Homebrew package manager:
+      ```bash
       brew install sox
       ```
-    - Windows: Using the Chocolatey package manager, run the following command in your terminal:
-      ```
+    - **Windows**: Using the Chocolatey package manager:
+      ```bash
       choco install sox.portable
       ```
-      **Note for Windows Users:** Some users have reported issues with newer SoX versions not recognizing the default audio device. If you encounter this, installing version 14.4.1 specifically might resolve the problem. You can install it using Chocolatey with the following command:
-      ```
+      **Note for Windows Users:** Some users have reported issues with newer SoX versions not recognizing the default audio device. If you encounter this, installing version 14.4.1 specifically might resolve the problem:
+      ```bash
       choco install sox.portable --version=14.4.1
       ```
-    - Ubuntu: Run the following command in your terminal:
-      ```
+    - **Ubuntu/Debian**:
+      ```bash
       sudo apt install sox
       ```
+    - **Other Linux distributions**: Use your package manager (e.g., `yum install sox`, `pacman -S sox`)
+
+    ### Option B: Custom Recording Command (Alternative)
+
+    **Linux users experiencing audio cutoff issues with SoX can use ffmpeg instead:**
+
+    - **Ubuntu/Debian**:
+      ```bash
+      sudo apt install ffmpeg
+      ```
+    - **MacOS**:
+      ```bash
+      brew install ffmpeg
+      ```
+    - **Windows**:
+      ```bash
+      choco install ffmpeg
+      ```
+
+    After installation, configure the custom recording command in VS Code settings (see [Custom Recording Commands](#custom-recording-commands) section below).
 
 2.  Install Docker to enable the local Whisper model or use the OpenAI API or Groq API for remote transcription.
     - If using local transcription, follow the instructions in the [Local Development with Faster Whisper](#local-development-with-faster-whisper) section.
@@ -46,9 +75,9 @@ To install and setup Whisper Assistant, follow these steps:
 
 # How to Use Whisper Assistant
 
-1. **Initialization**: Upon loading Visual Studio Code, the extension verifies the correct installation of SoX. If any issues are detected, an error message will be displayed.
+1. **Initialization**: Upon loading Visual Studio Code, the extension verifies the correct installation of SoX (or your custom recording command if configured). If any issues are detected, an error message will be displayed.
 
-Once initialization is complete, a quote icon will appear in the bottom right status bar.
+Once initialization is complete, a microphone icon will appear in the bottom right status bar.
 
   <img src="https://raw.githubusercontent.com/martin-opensky/whisper-assistant-vscode/main/images/microphone.png" alt="Whisper Assistant icon" style="width: 144px; height: auto; ">
 
@@ -68,6 +97,100 @@ Once initialization is complete, a quote icon will appear in the bottom right st
 
 **Tip**: For an optimal experience, consider using the Cursor.so application to directly call the Chat GPT-4 API for code instructions. This allows you to use your voice to instruct GPT to refactor your code, write unit tests, and implement various improvements.
 
+## Custom Recording Commands
+
+Whisper Assistant uses SoX by default, but you can configure a custom recording command if you prefer alternatives like ffmpeg or need to work around platform-specific issues.
+
+### When to Use Custom Recording Commands
+
+- **Linux users experiencing audio cutoff**: Some Linux distributions have issues with SoX cutting off the last few seconds of recordings
+- **Advanced users**: Want to use specific audio settings or recording tools
+- **Specific microphone requirements**: Need to target a particular audio device
+
+### Configuration
+
+1. Open VS Code settings (`Cmd/Ctrl + ,`)
+2. Search for "Whisper Assistant"
+3. Find "Custom Recording Command"
+4. Enter your command with the `$AUDIO_FILE` placeholder
+
+**Important**: Your command MUST include `$AUDIO_FILE` where the output file should be saved.
+
+### Platform-Specific Examples
+
+#### macOS (ffmpeg)
+
+```bash
+ffmpeg -f avfoundation -i :1 -ac 1 -ar 16000 -sample_fmt s16 $AUDIO_FILE
+```
+
+_Note: Replace `:1` with the appropriate device number from `ffmpeg -f avfoundation -list_devices true -i ""`_
+
+#### Linux (ffmpeg with PulseAudio)
+
+```bash
+ffmpeg -f pulse -i default -ac 1 -ar 16000 -sample_fmt s16 $AUDIO_FILE
+```
+
+#### Linux (ffmpeg with ALSA)
+
+```bash
+ffmpeg -f alsa -i default -ac 1 -ar 16000 -sample_fmt s16 $AUDIO_FILE
+```
+
+#### Windows (ffmpeg)
+
+```bash
+ffmpeg -f dshow -i audio="Microphone" -ac 1 -ar 16000 -sample_fmt s16 $AUDIO_FILE
+```
+
+#### Alternative Tools
+
+**Linux with arecord:**
+
+```bash
+arecord -f S16_LE -c 1 -r 16000 $AUDIO_FILE
+```
+
+**Any platform with custom settings:**
+
+```bash
+sox -t pulseaudio default -c 1 -r 16000 $AUDIO_FILE gain -3
+```
+
+### Troubleshooting Custom Commands
+
+- **Command validation error**: Ensure your command includes `$AUDIO_FILE`
+- **No audio recorded**: Check your audio device permissions and microphone access
+- **Command not found**: Verify the recording tool (ffmpeg, arecord, etc.) is installed and in your PATH
+- **Still experiencing cutoffs**: Try adjusting buffer settings or switching recording tools
+
+### Finding Your Audio Device
+
+**macOS (ffmpeg):**
+
+```bash
+ffmpeg -f avfoundation -list_devices true -i ""
+```
+
+**Linux (PulseAudio):**
+
+```bash
+pactl list sources short
+```
+
+**Linux (ALSA):**
+
+```bash
+arecord -l
+```
+
+**Windows (ffmpeg):**
+
+```bash
+ffmpeg -list_devices true -f dshow -i dummy
+```
+
 ## Using Whisper Assistant with Cursor.so
 
 To enhance your development experience with Cursor.so and Whisper Assistant, follow these simple steps:
@@ -82,9 +205,15 @@ To enhance your development experience with Cursor.so and Whisper Assistant, fol
 
 By integrating Cursor.so with Whisper Assistant, you can provide extensive instructions without the need for typing, significantly enhancing your development workflow.
 
-# Disclaimer
+# Platform Compatibility
 
-Please note that this extension has been primarily tested on Mac OS. While efforts have been made to ensure compatibility, its functionality on other platforms such as Windows or Linux cannot be fully guaranteed. I welcome and appreciate any pull requests to address potential issues encountered on these platforms.
+Whisper Assistant has been tested and supports:
+
+- **macOS**: Full support with SoX (default) and ffmpeg (custom)
+- **Windows**: Full support with SoX (default) and ffmpeg (custom)
+- **Linux**: Full support with SoX (default) and ffmpeg (custom) - _Note: Some distributions may experience audio cutoff issues with SoX, for which ffmpeg is recommended_
+
+If you encounter any platform-specific issues, please consider using the [custom recording command](#custom-recording-commands) feature or report the issue on our GitHub repository.
 
 ## Local Development with Faster Whisper
 

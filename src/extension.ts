@@ -138,13 +138,18 @@ export async function toggleRecordingCommand(): Promise<void> {
   if (state.speechTranscription !== undefined && !state.isTranscribing) {
     if (!state.isRecording) {
       state.outputChannel.appendLine('Starting recording...');
-      state.speechTranscription.startRecording();
-      state.recordingStartTime = Date.now();
-      state.isRecording = true;
-      updateStatusBarItem();
-      state.outputChannel.appendLine('Recording started');
+      const recordingStarted = state.speechTranscription.startRecording();
 
-      setInterval(updateStatusBarItem, 1000);
+      if (recordingStarted) {
+        state.recordingStartTime = Date.now();
+        state.isRecording = true;
+        updateStatusBarItem();
+        state.outputChannel.appendLine('Recording started');
+
+        setInterval(updateStatusBarItem, 1000);
+      } else {
+        state.outputChannel.appendLine('Failed to start recording');
+      }
     } else {
       state.outputChannel.appendLine('Stopping recording...');
       await state.speechTranscription.stopRecording();

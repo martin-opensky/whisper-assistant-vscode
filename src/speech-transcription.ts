@@ -60,6 +60,9 @@ class SpeechTranscription {
 
     const apiKey = config.get<string>('apiKey');
     if (!apiKey) {
+      vscode.window.showErrorMessage(
+        `Whisper Assistant: API key not configured for ${provider}. Please set the API key in settings.`,
+      );
       throw new Error(`API key not configured for ${provider}`);
     }
 
@@ -89,9 +92,80 @@ class SpeechTranscription {
     return this.storagePath;
   }
 
-  startRecording(): void {
+  startRecording(): boolean {
     try {
+      // Ensure temp directory exists
+      if (!fs.existsSync(this.tempDir)) {
+        fs.mkdirSync(this.tempDir, { recursive: true });
+      }
+
       const outputPath = path.join(this.tempDir, `${this.fileName}.wav`);
+
+      // Check for custom recording command first
+      const config = vscode.workspace.getConfiguration('whisper-assistant');
+      const customCommand = config.get<string>('customRecordingCommand') || '';
+
+      if (customCommand.trim()) {
+        this.outputChannel.appendLine(
+          'Whisper Assistant: Using custom recording command',
+        );
+        return this.startCustomRecording(outputPath, customCommand);
+      } else {
+        this.outputChannel.appendLine(
+          'Whisper Assistant: Using sox for recording (default)',
+        );
+        this.startSoxRecording(outputPath);
+        return true;
+      }
+    } catch (error) {
+      this.outputChannel.appendLine(`Whisper Assistant: error: ${error}`);
+      return false;
+    }
+  }
+
+  private startCustomRecording(
+    outputPath: string,
+    customCommand: string,
+  ): boolean {
+    // Validate that the command contains the required placeholder
+    if (!customCommand.includes('$AUDIO_FILE')) {
+      vscode.window.showErrorMessage(
+        'Whisper Assistant: Custom recording command must include $AUDIO_FILE placeholder. Example: ffmpeg -f avfoundation -i :1 -ac 1 -ar 16000 -sample_fmt s16 $AUDIO_FILE',
+      );
+      return false; // Return false to indicate failure
+    }
+
+    // Replace the placeholder with the actual output path (properly quoted)
+    const command = customCommand.replace(/\$AUDIO_FILE/g, `"${outputPath}"`);
+
+    this.outputChannel.appendLine(
+      `Whisper Assistant: Executing custom command: ${command}`,
+    );
+
+    // Use platform-appropriate shell execution
+    this.recordingProcess = this.spawnWithShell(command);
+    this.setupProcessHandlers();
+    return true; // Return true to indicate success
+  }
+
+  private spawnWithShell(command: string): ChildProcess {
+    const platform = process.platform;
+
+    switch (platform) {
+      case 'win32':
+        // Use cmd.exe on Windows
+        return spawn('cmd', ['/c', command]);
+
+      case 'darwin':
+      case 'linux':
+      default:
+        // Use sh on Unix-like systems (macOS, Linux, etc.)
+        return spawn('sh', ['-c', command]);
+    }
+  }
+
+  private startSoxRecording(outputPath: string): void {
+    try {
       this.recordingProcess = spawn('sox', [
         '-d',
         '-b',
@@ -102,42 +176,47 @@ class SpeechTranscription {
         '1',
         '-r',
         '16k',
-        '--buffer',
-        '2048',
         outputPath,
       ]);
-
-      if (this.recordingProcess) {
-        // Only show initial SoX configuration
-        let initialConfigShown = false;
-
-        this.recordingProcess.stderr?.on('data', (data) => {
-          const message = data.toString();
-          // Only show the initial configuration message
-          if (!initialConfigShown && message.includes('Input File')) {
-            this.outputChannel.appendLine(
-              `Whisper Assistant: SoX Configuration: ${message.trim()}`,
-            );
-            initialConfigShown = true;
-          }
-        });
-
-        this.recordingProcess.stdout?.on('data', (data) => {
-          this.outputChannel.appendLine(
-            `Whisper Assistant: SoX stdout: ${data}`,
-          );
-        });
-
-        this.recordingProcess.on('close', (code) => {
-          if (code !== 0) {
-            this.outputChannel.appendLine(
-              `Whisper Assistant: SoX process exited with code ${code}`,
-            );
-          }
-        });
-      }
+      this.setupProcessHandlers();
     } catch (error) {
-      this.outputChannel.appendLine(`Whisper Assistant: error: ${error}`);
+      this.outputChannel.appendLine(
+        `Whisper Assistant: Error starting sox recording: ${error}`,
+      );
+      vscode.window.showErrorMessage(
+        'Whisper Assistant: Failed to start sox recording. Please ensure sox is installed.',
+      );
+      throw error; // Re-throw so startRecording() can return false
+    }
+  }
+
+  private setupProcessHandlers(): void {
+    if (this.recordingProcess) {
+      // Only show initial configuration
+      let initialConfigShown = false;
+
+      this.recordingProcess.stderr?.on('data', (data) => {
+        const message = data.toString();
+        // Only show the initial configuration message
+        if (!initialConfigShown && message.includes('Input File')) {
+          this.outputChannel.appendLine(
+            `Whisper Assistant: Configuration: ${message.trim()}`,
+          );
+          initialConfigShown = true;
+        }
+      });
+
+      this.recordingProcess.stdout?.on('data', (data) => {
+        this.outputChannel.appendLine(`Whisper Assistant: stdout: ${data}`);
+      });
+
+      this.recordingProcess.on('close', (code) => {
+        if (code !== 0) {
+          this.outputChannel.appendLine(
+            `Whisper Assistant: Recording process exited with code ${code}`,
+          );
+        }
+      });
     }
   }
 
@@ -179,16 +258,19 @@ class SpeechTranscription {
     }
 
     this.recordingProcess = null;
-
-    // Post-process the recording to add padding and fix any cutoff issues
-    await this.postProcessRecording();
   }
 
   async transcribeRecording(): Promise<Transcription | undefined> {
     const config = vscode.workspace.getConfiguration('whisper-assistant');
     const provider = config.get<ApiProvider>('apiProvider') || 'localhost';
 
-    const apiConfig = this.getApiConfig();
+    let apiConfig: ApiConfig;
+    try {
+      apiConfig = this.getApiConfig();
+    } catch (error) {
+      // getApiConfig already shows a user error message, just return
+      return undefined;
+    }
 
     try {
       this.outputChannel.appendLine(
@@ -208,7 +290,10 @@ class SpeechTranscription {
       const openai = new OpenAI(apiConfig);
 
       if (!openai) {
-        throw new Error('OpenAI client not initialized');
+        vscode.window.showErrorMessage(
+          'Whisper Assistant: Failed to initialize OpenAI client. Please check your API configuration.',
+        );
+        return undefined;
       }
 
       const transcription = await openai.audio.transcriptions.create({
@@ -270,40 +355,6 @@ class SpeechTranscription {
       }
 
       return undefined;
-    }
-  }
-
-  private async postProcessRecording(): Promise<void> {
-    try {
-      const originalPath = path.join(this.tempDir, `${this.fileName}.wav`);
-      const tempPath = path.join(this.tempDir, `${this.fileName}_temp.wav`);
-
-      // Check if the original file exists
-      if (!fs.existsSync(originalPath)) {
-        this.outputChannel.appendLine(
-          'Whisper Assistant: No recording file found to post-process',
-        );
-        return;
-      }
-
-      this.outputChannel.appendLine(
-        'Whisper Assistant: Post-processing recording to fix cutoff issues',
-      );
-
-      // Add 2 seconds of silence to compensate for cutoff
-      // Use sox to add padding to the existing file
-      await execAsync(`sox "${originalPath}" "${tempPath}" pad 0 2`);
-
-      // Replace original with padded version
-      fs.renameSync(tempPath, originalPath);
-
-      this.outputChannel.appendLine(
-        'Whisper Assistant: Recording post-processing completed',
-      );
-    } catch (error) {
-      this.outputChannel.appendLine(
-        `Whisper Assistant: Error post-processing recording: ${error}`,
-      );
     }
   }
 
