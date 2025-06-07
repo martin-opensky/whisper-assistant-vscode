@@ -2,7 +2,7 @@
   "name": "whisper-assistant",
   "displayName": "Whisper Assistant",
   "description": "Leveraging OpenAI's Whisper to transcribe your speech, enhancing your coding efficiency and experience.",
-  "version": "1.2.1",
+  "version": "1.2.3",
   "publisher": "MartinOpenSky",
   "icon": "images/whisper-assistant.png",
   "repository": {
