@@ -289,7 +289,12 @@ class SpeechTranscription {
         `Whisper Assistant: Using model ${model} for ${provider}`,
       );
 
-      const openai = new OpenAI(apiConfig);
+      const openai = new OpenAI({
+        baseURL: apiConfig.baseURL,
+        apiKey: apiConfig.apiKey,
+        maxRetries: 0,
+        timeout: 30 * 1000,
+      });
 
       if (!openai) {
         vscode.window.showErrorMessage(
