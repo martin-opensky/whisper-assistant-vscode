@@ -281,7 +281,9 @@ class SpeechTranscription {
         path.join(this.tempDir, `${this.fileName}.wav`),
       );
 
-      const model = PROVIDER_MODELS[provider];
+      // Get the configured model or fall back to provider default
+      const configuredModel = config.get<string | null>('model');
+      const model = configuredModel ?? PROVIDER_MODELS[provider];
 
       this.outputChannel.appendLine(
         `Whisper Assistant: Using model ${model} for ${provider}`,
