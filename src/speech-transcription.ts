@@ -306,7 +306,7 @@ class SpeechTranscription {
       const transcription = await openai.audio.transcriptions.create({
         file: audioFile,
         model: model,
-        language: 'en',
+        language: config.get<string>('transcriptionLanguage'),
         // eslint-disable-next-line @typescript-eslint/naming-convention
         response_format: 'verbose_json',
       });

@@ -67,6 +67,11 @@
           "type": ["string", "null"],
           "default": null,
           "description": "Specify the Whisper model to use for transcription. Leave as null to use the provider's default model. Examples: 'whisper-1', 'whisper-large-v3-turbo', or any other model supported by your provider."
+        },
+        "whisper-assistant.transcriptionLanguage": {
+          "type": "string",
+          "default": "en",
+          "description": "Translate all the recordings into selected language. If empty, then auto-detect language and use it."
         }
       }
     }
