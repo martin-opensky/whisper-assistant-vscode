@@ -172,8 +172,8 @@
             "Sundanese",
             "Cantonese"
           ],
-          "default": "Auto",
-          "description": "Transcription language. Use Auto to automatically detect spoken language. Use English to translate your speech into English language."
+          "default": "English",
+          "description": "Transcription language. Use Auto to automatically detect spoken language."
         }
       }
     }

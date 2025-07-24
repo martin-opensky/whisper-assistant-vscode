@@ -38,10 +38,6 @@ const PROVIDER_MODELS: Record<ApiProvider, WhisperModel> = {
   localhost: 'whisper-1', // default to OpenAI model for localhost
 };
 
-interface LanguageCodeMap {
-  [key: string]: string | undefined;
-}
-
 const LANGUAGE_CODES: Map<string, string> = new Map([
   ['English', 'en'],
   ['Chinese', 'zh'],
