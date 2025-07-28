@@ -1,4 +1,4 @@
-FROM python:3.10.13-slim
+FROM python:3.14.0rc1-slim
 
 # Install system dependencies
 RUN apt-get update --fix-missing && apt-get install -y \
